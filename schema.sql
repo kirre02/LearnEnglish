@@ -1,5 +1,5 @@
 
-CREATE TABLE user (
+CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -7,7 +7,7 @@ CREATE TABLE user (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO user (name, email, password_hash)
+INSERT INTO users (name, email, password_hash)
 VALUES
     ('coder1', 'coder1@example.com', 'hashed_password1'),
     ('coder2', 'coder2@example.com', 'hashed_password2'),
