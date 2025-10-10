@@ -1,0 +1,5 @@
+:root {
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --secondary-gradient: linear-gradient(135deg, #FF6B6B, #FF8E53);
+  --font-family: 'Comic Sans MS', cursive, sans-serif;
+}
