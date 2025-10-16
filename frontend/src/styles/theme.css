@@ -1,5 +1,12 @@
 :root {
-  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --secondary-gradient: linear-gradient(135deg, #FF6B6B, #FF8E53);
-  --font-family: 'Comic Sans MS', cursive, sans-serif;
-}
+  /* Uppdaterad Primary: Blå/Mörkblå accent för knappar och huvudinteraktioner */
+  --primary-gradient: linear-gradient(135deg, #007BFF 0%, #0056B3 100%); 
+  
+  /* Uppdaterad Secondary: Orange/Röd accent från "WELCOME!" texten */
+  --secondary-gradient: linear-gradient(135deg, #FF6B6B, #FF8E53); 
+  
+  /* Behåll Comic Sans/lekfullt typsnitt */
+  --font-family: 'Comic Sans MS', cursive, sans-serif; 
+  
+  /* Lägg till en bakgrundsfärgsvariabel för enhetlighet */
+--site-background: #F5F5F0;}

@@ -20,7 +20,7 @@
           <div class="user-avatar">😊</div>
           <div class="user-details">
             <div class="word-count">
-              <span class="count">0</span>
+              <span class="count">{{ learnedWords }}</span>
               <span class="label">ord lärt!</span>
             </div>
             <button @click="handleLogout" class="logout-btn">
@@ -38,19 +38,19 @@
         <div class="bubble-emoji">🚀</div>
         <div class="bubble-content">
           <h3>Ditt äventyr börjar!</h3>
-          <p>0 av 125 ord upptäckta</p>
+          <p>{{ learnedWords }} av 125 ord upptäckta</p>
           <div class="progress-ring">
-            <div class="ring-fill"></div>
-            <span class="ring-text">0%</span>
+            <div class="ring-fill" :style="progressStyle"></div>
+            <span class="ring-text">{{ progressPercentage }}%</span>
           </div>
         </div>
       </div>
       
-      <div class="progress-bubble fun-bubble">
-        <div class="bubble-emoji">🌈</div>
+      <div class="progress-bubble quiz-bubble">
+        <div class="bubble-emoji">🏆</div>
         <div class="bubble-content">
-          <h3>Kul att veta!</h3>
-          <p>Engelska talas i över 60 länder!</p>
+          <h3>Quiz-mästare!</h3>
+          <p>{{ completedQuizzes }} quiz avklarade</p>
         </div>
       </div>
     </div>
@@ -110,6 +110,15 @@
           <p>Mamma, pappa & alla andra</p>
           <div class="card-sparkle">✨</div>
         </div>
+
+        <!-- NYTT QUIZ-KORT -->
+        <div class="explore-card card-quiz" @click="startQuiz">
+          <div class="card-emoji">🧠</div>
+          <div class="card-wave"></div>
+          <h3>Quiz</h3>
+          <p>Testa dina kunskaper</p>
+          <div class="card-sparkle">✨</div>
+        </div>
       </div>
     </div>
 
@@ -132,9 +141,9 @@
           <span class="btn-emoji">🎤</span>
           <span>Upprepa</span>
         </button>
-        <button class="action-btn mix-btn" @click="startQuickPractice('mix')">
-          <span class="btn-emoji">🎲</span>
-          <span>Blandat</span>
+        <button class="action-btn quiz-btn" @click="startQuiz">
+          <span class="btn-emoji">🎯</span>
+          <span>Quiz</span>
         </button>
       </div>
     </div>
@@ -158,15 +167,40 @@ export default {
   name: 'Dashboard',
   data() {
     return {
-      user: JSON.parse(localStorage.getItem('user') || '{}')
+      user: JSON.parse(localStorage.getItem('user') || '{}'),
+      learnedWords: 0,
+      completedQuizzes: 0
+    }
+  },
+  computed: {
+    progressPercentage() {
+      return Math.round((this.learnedWords / 125) * 100);
+    },
+    progressStyle() {
+      return {
+        background: `conic-gradient(#4ECDC4 ${this.progressPercentage}%, #e0e0e0 0%)`
+      };
     }
   },
   mounted() {
     if (!localStorage.getItem('token')) {
       this.$router.push('/');
     }
+    this.loadProgress();
   },
   methods: {
+    loadProgress() {
+      const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
+      this.learnedWords = progress.learnedWords || 0;
+      this.completedQuizzes = progress.completedQuizzes || 0;
+    },
+    saveProgress() {
+      const progress = {
+        learnedWords: this.learnedWords,
+        completedQuizzes: this.completedQuizzes
+      };
+      localStorage.setItem('learningProgress', JSON.stringify(progress));
+    },
     handleLogout() {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -183,6 +217,9 @@ export default {
         'mix': 'Blandat'
       };
       alert(`${types[type]} övning kommer snart!`);
+    },
+    startQuiz() {
+      this.$router.push('/quiz');
     }
   }
 }
@@ -193,7 +230,7 @@ export default {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #f7f3ed;
   min-height: 100vh;
   font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
   position: relative;
@@ -319,7 +356,6 @@ export default {
   color: #666;
 }
 
-/* Uppdaterad logout-knapp */
 .logout-btn {
   background: linear-gradient(135deg, #FF6B6B, #FF5252);
   color: white;
@@ -340,14 +376,6 @@ export default {
   transform: scale(1.05);
   background: linear-gradient(135deg, #FF5252, #FF0000);
   box-shadow: 0 6px 20px rgba(255,107,107,0.5);
-}
-
-.logout-text {
-  font-size: 0.9em;
-}
-
-.logout-emoji {
-  font-size: 1.1em;
 }
 
 /* Framstegs-bubblor */
@@ -374,8 +402,8 @@ export default {
   border: 3px solid #4ECDC4;
 }
 
-.fun-bubble {
-  border: 3px solid #FFD700;
+.quiz-bubble {
+  border: 3px solid #FF9A8B;
 }
 
 .bubble-emoji {
@@ -408,7 +436,6 @@ export default {
   position: absolute;
   width: 100%;
   height: 100%;
-  background: conic-gradient(#4ECDC4 0%, #e0e0e0 0%);
   border-radius: 50%;
   mask: radial-gradient(transparent 55%, black 56%);
 }
@@ -478,6 +505,7 @@ export default {
 .card-4 { background: linear-gradient(135deg, #667eea, #764ba2); }
 .card-5 { background: linear-gradient(135deg, #FD746C, #FF9068); }
 .card-6 { background: linear-gradient(135deg, #A8FF78, #78FFD6); }
+.card-quiz { background: linear-gradient(135deg, #FF9A8B, #FF6A88); }
 
 .card-wave {
   position: absolute;
@@ -554,7 +582,6 @@ export default {
 }
 
 .action-btn {
-  background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
   border: none;
   padding: 20px 15px;
@@ -567,18 +594,18 @@ export default {
   align-items: center;
   gap: 8px;
   transition: all 0.3s ease;
-  box-shadow: 0 6px 20px rgba(102,126,234,0.3);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
 }
 
 .action-btn:hover {
   transform: scale(1.05);
-  box-shadow: 0 8px 25px rgba(102,126,234,0.5);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.5);
 }
 
 .listen-btn { background: linear-gradient(135deg, #FF6B6B, #FF8E53); }
 .match-btn { background: linear-gradient(135deg, #4ECDC4, #44A08D); }
 .speak-btn { background: linear-gradient(135deg, #FFD700, #FF8E00); }
-.mix-btn { background: linear-gradient(135deg, #A8FF78, #78FFD6); }
+.quiz-btn { background: linear-gradient(135deg, #FF9A8B, #FF6A88); }
 
 .btn-emoji {
   font-size: 1.5em;
@@ -671,5 +698,4 @@ export default {
     flex-direction: column;
     gap: 15px;
   }
-}
-</style>
+}</style>
