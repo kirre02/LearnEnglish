@@ -1,13 +1,12 @@
 <template>
   <div id="app">
-    <header class="app-header" v-if="$route.path === '/'">
-      <div class="header-content">
-        <h1>Learn English App 🌟</h1>
-        <p>Fortsätt din språkresa på ett roligt sätt!</p>
-      </div>
-    </header>
-
+    <!-- 
+      Header-sektionen med den stora färgade bubblan har tagits bort härifrån 
+      för att låta WelcomePage (som laddas i router-view) bestämma all layout och bakgrund.
+    -->
+    
     <main>
+      <!-- Här laddas den aktuella routade komponenten (t.ex. WelcomePage) -->
       <router-view></router-view>
     </main>
   </div>
@@ -15,87 +14,34 @@
 
 <script>
 export default {
-  name: "App",
-};
+  name: 'App'
+}
 </script>
 
 <style>
-/* Reset */
+/* Återställ standardmarginaler och paddningar */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-body,
-html,
+/* Stilar för huvudcontainern för appen */
 #app {
+  /* Använd den typsnittsfamilj du vill ha */
+  font-family: 'Arial', sans-serif; 
   min-height: 100vh;
-  background-color: #faf7f2; /* mjukt beige likt login/register */
-  font-family: "Poppins", "Segoe UI", sans-serif;
-  color: #333;
+  /* Den lila/blå bakgrundsgradienten har tagits bort härifrån. 
+     Startsidan (WelcomePage) bestämmer nu bakgrunden. */
 }
 
-/* Layout */
-main {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+/* Stilar för body, se till att den fyller hela fönstret */
+body {  margin: 0;
   min-height: 100vh;
-  padding: 40px 20px;
+  /* Säkerställer att ingen global bakgrund ställer till problem */
+  background: none; 
 }
 
-/* Header (valfri) */
-.app-header {
-  text-align: center;
-  padding: 30px 20px;
-  background: #fffaf5;
-  border-bottom: 2px solid #ffd5b6;
-  box-shadow: 0 2px 10px rgba(255, 153, 102, 0.1);
-}
-
-.app-header h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #ff7a33; /* varm orange ton */
-}
-
-.app-header p {
-  font-size: 1.1rem;
-  color: #666;
-}
-
-/* Gemensamma färger och ton */
-:root {
-  --accent-color: #ff7a33;
-  --accent-gradient: linear-gradient(135deg, #ff9553, #ff7a33);
-  --bg-light: #fffaf5;
-  --text-dark: #333;
-}
-
-/* Gemensamma UI-stilar */
-button {
-  background: var(--accent-gradient);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 12px 20px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-button:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-a {
-  color: var(--accent-color);
-  text-decoration: none;
-}
-
-a:hover {
-  text-decoration: underline;
-}
+/* Du kan ta bort alla oanvända .header-klasser, @keyframes, och @media queries 
+   som tidigare fanns här, eftersom de inte längre används efter att headern togs bort. */
 </style>
