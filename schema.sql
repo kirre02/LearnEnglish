@@ -1,6 +1,4 @@
-
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE users (id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -15,3 +13,20 @@ VALUES
     ('coder4', 'coder4@example.com', 'hashed_password4'),
     ('coder5', 'coder5@example.com', 'hashed_password5'),
     ('coder6', 'coder6@example.com', 'hashed_password6');
+
+-- LÄGG TILL DENNA DEL FÖR RESULTS TABELLEN
+CREATE TABLE results (
+    id SERIAL PRIMARY KEY,
+    user_id INT,
+    score INT,
+    total INT,
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Testdata för results (valfritt)
+INSERT INTO results (user_id, score, total) VALUES
+(1, 8, 10),
+(1, 6, 10),
+(2, 9, 10),
+(1, 7, 10);

@@ -1,5 +1,6 @@
 import express from "express";
 import userRoutes from "./routes/userRoutes.js";
+import resultRoutes from "./routes/resultRoutes.js";  // <-- LÄGG TILL DENNA RAD!
 import cors from "cors";
 
 const app = express();
@@ -14,7 +15,7 @@ app.use(cors({
 app.use(express.json());
 
 app.use("/api/users", userRoutes);
+app.use("/api", resultRoutes);  // <-- LÄGG TILL DENNA RAD!
 
 app.listen(PORT, () => {
-  console.log(`Server has started on port ${PORT}`);
-});
+  console.log(`Server has started on port ${PORT}`);});

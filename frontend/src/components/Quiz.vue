@@ -1,7 +1,6 @@
 <template>
   <div class="quiz-page-container">
     <div class="quiz-container">
-      <!-- Quiz Header -->
       <div class="quiz-header">
         <button @click="goBack" class="back-btn">← Tillbaka</button>
         <div class="quiz-progress">
@@ -12,9 +11,7 @@
         </div>
       </div>
 
-      <!-- Quiz Content -->
       <div v-if="!quizFinished" class="quiz-content">
-        <!-- Question Bubble -->
         <div class="question-bubble">
           <div class="question-emoji">🧠</div>
           <h2>{{ currentQuestion.question }}</h2>
@@ -23,7 +20,6 @@
           </div>
         </div>
 
-        <!-- Options -->
         <div class="options-container">
           <button 
             v-for="(option, index) in currentQuestion.options" 
@@ -37,7 +33,6 @@
           </button>
         </div>
 
-        <!-- Feedback -->
         <div v-if="answered" class="feedback-bubble" :class="feedbackClass">
           <div class="feedback-emoji">{{ feedbackEmoji }}</div>
           <div class="feedback-text">{{ feedbackText }}</div>
@@ -47,7 +42,6 @@
         </div>
       </div>
 
-      <!-- Results -->
       <div v-else class="results-container">
         <div class="results-bubble" :class="resultsClass">
           <div class="results-emoji">{{ resultsEmoji }}</div>
@@ -58,6 +52,9 @@
           <div class="results-actions">
             <button @click="restartQuiz" class="action-btn play-again-btn">
               🎮 Spela igen
+            </button>
+            <button @click="goToAllResults" class="action-btn results-btn">
+              📊 Se alla resultat
             </button>
             <button @click="goToDashboard" class="action-btn dashboard-btn">
               🏠 Till dashboard
@@ -79,6 +76,7 @@ export default {
       answered: false,
       selectedAnswer: null,
       quizFinished: false,
+      progress: {}, // För att lagra laddad progress
       questions: [
         {
           question: "Vad betyder 'Hello' på svenska?",
@@ -160,6 +158,33 @@ export default {
       return 'Fortsätt öva, du blir bättre!';
     }
   },
+  // MARK: UPPDATERAD mounted()
+  mounted() {
+    // Kolla om vi ska visa resultat direkt (när man kommer tillbaka från results-sidan)
+    if (this.$route.query.showResults === 'true') {
+      // Hämta sparad quiz-state från localStorage
+      const savedState = localStorage.getItem('lastQuizState');
+      if (savedState) {
+        try {
+          const quizState = JSON.parse(savedState);
+          this.quizFinished = true;
+          this.score = quizState.score;
+          // Observera: Vi behöver inte uppdatera this.questions.length då det är fast i data()
+          // Rensa state för att undvika att resultatet visas vid nästa navigering
+          localStorage.removeItem('lastQuizState');
+        } catch (e) {
+          console.error("Kunde inte tolka sparad quiz-state:", e);
+        }
+      }
+      // Ta bort query-parametern så den inte finns kvar vid refresh
+      this.$router.replace({ query: {} });
+    }
+    
+    if (!localStorage.getItem('token')) {
+      this.$router.push('/');
+    }
+    this.loadProgress();
+  },
   methods: {
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
@@ -191,12 +216,57 @@ export default {
     finishQuiz() {
       this.quizFinished = true;
       this.updateProgress();
+      this.saveQuizResult();
+      // NYTT: Spara state när quizet är avslutat
+      this.saveQuizStateForResults();
+    },
+    // NY METOD: Spara quiz-state för återanvändning
+    saveQuizStateForResults() {
+        const quizState = {
+            score: this.score,
+            questionsLength: this.questions.length
+        };
+        localStorage.setItem('lastQuizState', JSON.stringify(quizState));
+    },
+    async saveQuizResult() {
+      try {
+        const resultData = {
+          userId: 1, // TODO: Hämta från localStorage/auth
+          score: this.score,
+          total: this.questions.length
+        };
+
+        const response = await fetch('http://localhost:9001/api/results', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(resultData)
+        });
+
+        if (response.ok) {
+          console.log('Quiz result saved successfully!');
+        } else {
+          console.error('Failed to save quiz result');
+        }
+      } catch (error) {
+        console.error('Error saving quiz result:', error);
+      }
     },
     updateProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
       progress.completedQuizzes = (progress.completedQuizzes || 0) + 1;
       progress.learnedWords = Math.min(125, (progress.learnedWords || 0) + this.score * 2);
       localStorage.setItem('learningProgress', JSON.stringify(progress));
+    },
+    loadProgress() {
+      try {
+        const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
+        this.progress = progress;
+      } catch (e) {
+        console.error("Kunde inte ladda framsteg:", e);
+        this.progress = {};
+      }
     },
     restartQuiz() {
       this.score = 0;
@@ -210,6 +280,10 @@ export default {
     },
     goToDashboard() {
       this.$router.push('/dashboard');
+    },
+    goToAllResults() {
+      // NYTT: Lägg till query-parameter för att visa resultat vid återkomst
+      this.$router.push({ path: '/results', query: { showResults: 'true' } });
     }
   }
 }
@@ -459,6 +533,12 @@ export default {
 
 .play-again-btn {
   background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
+}
+
+/* NY CSS FÖR RESULTS-KNAPPEN */
+.results-btn {
+  background: rgba(102, 126, 234, 0.8);
   backdrop-filter: blur(10px);
 }
 
