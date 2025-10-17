@@ -175,7 +175,7 @@ export default {
       this.successMessage = ''
 
       try {
-        const response = await fetch('http://localhost:9001/users/register', {
+        const response = await fetch('http://localhost:9001/api/users/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
