@@ -211,154 +211,180 @@ export default {
 </script>
 
 <style scoped>
-
 .page-wrapper {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  background-color: #faf7f2;
+  font-family: "Poppins", "Segoe UI", sans-serif;
 }
 
+/* Formulär */
 .register-form {
-  max-width: 400px;
-  margin: 0 auto;
-  padding: 30px;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  background: white;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: #fffaf5;
+  border: 1px solid #ffd5b6;
+  border-radius: 16px;
+  padding: 40px 35px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 8px 20px rgba(255, 153, 102, 0.15);
+  transition: all 0.3s ease;
 }
 
+.register-form:hover {
+  box-shadow: 0 10px 25px rgba(255, 153, 102, 0.25);
+}
+
+/* Rubrik */
 .register-form h2 {
   text-align: center;
-  margin-bottom: 30px;
-  color: #333;
-  font-size: 24px;
+  font-size: 1.9rem;
+  color: #ff7a33;
+  margin-bottom: 25px;
+  font-weight: 700;
 }
 
+/* Input-fält */
 .form-group {
   margin-bottom: 20px;
-  text-align: left;
 }
 
 label {
   display: block;
-  margin-bottom: 8px;
   font-weight: 600;
-  color: #555;
+  color: #444;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
 }
 
 input[type="email"],
 input[type="password"],
 input[type="text"] {
   width: 100%;
-  padding: 12px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  box-sizing: border-box;
-  font-size: 14px;
-  transition: border-color 0.3s;
+  padding: 12px 14px;
+  border: 2px solid #ffe2c6;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background: #fffdfb;
 }
 
 input:focus {
+  border-color: #ff7a33;
+  box-shadow: 0 0 0 3px rgba(255, 122, 51, 0.15);
   outline: none;
-  border-color: #4CAF50;
 }
 
 input.error {
-  border-color: #ff4444;
+  border-color: #ff5555;
 }
 
-.password-group {
-  position: relative;
-}
-
+/* Lösenordsikoner */
 .password-input-container {
   position: relative;
 }
 
 .toggle-password {
   position: absolute;
-  right: 10px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 18px;
   padding: 5px;
+  color: #ff7a33;
+  transition: transform 0.2s ease;
 }
 
+.toggle-password:hover {
+  transform: translateY(-50%) scale(1.2);
+}
+
+/* Felmeddelanden */
 .error-text {
-  color: #ff4444;
-  font-size: 12px;
+  color: #ff5555;
+  font-size: 13px;
+  margin-top: 4px;
   display: block;
-  margin-top: 5px;
 }
 
+/* Registreringsknapp */
 .register-btn {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #4CAF50, #45a049);
+  background: linear-gradient(135deg, #ff9553, #ff7a33);
   color: white;
+  font-weight: 700;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 16px;
-  font-weight: 600;
-  transition: all 0.3s;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 10px rgba(255, 122, 51, 0.25);
 }
 
 .register-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+  box-shadow: 0 6px 14px rgba(255, 122, 51, 0.3);
 }
 
 .register-btn:disabled {
-  background: #cccccc;
+  background: #ffcfb1;
   cursor: not-allowed;
-  transform: none;
+}
+
+/* Feedback */
+.error-message,
+.success-message {
+  margin-top: 15px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .error-message {
-  color: #ff4444;
-  margin-top: 15px;
-  padding: 12px;
-  background-color: #ffe6e6;
-  border-radius: 8px;
-  border-left: 4px solid #ff4444;
+  background-color: #ffe7e1;
+  border-left: 4px solid #ff5555;
+  color: #d64545;
 }
 
 .success-message {
-  color: #00C851;
-  margin-top: 15px;
-  padding: 12px;
-  background-color: #e6ffe6;
-  border-radius: 8px;
-  border-left: 4px solid #00C851;
+  background-color: #e6fff0;
+  border-left: 4px solid #2ecc71;
+  color: #27ae60;
 }
 
+/* Länk till login */
 .switch-link {
   text-align: center;
-  margin-top: 20px;
+  margin-top: 25px;
   font-size: 14px;
+  color: #555;
 }
 
 .switch-link a {
-  color: #4CAF50;
-  text-decoration: none;
+  color: #ff7a33;
   font-weight: 600;
+  text-decoration: none;
+  margin-left: 4px;
 }
 
 .switch-link a:hover {
   text-decoration: underline;
 }
 
-/* Responsiv design */
+/* Responsivitet */
 @media (max-width: 480px) {
   .register-form {
+    padding: 25px 20px;
     margin: 20px;
-    padding: 20px;
+  }
+  .register-form h2 {
+    font-size: 1.6rem;
   }
 }
 </style>
