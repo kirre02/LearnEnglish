@@ -2,13 +2,23 @@
   <div class="practice-page speak-practice">
     <div class="practice-container">
       <div class="practice-header">
-        <button @click="goBack" class="back-btn">← Tillbaka</button>
+        <button 
+          @click="goToPreviousWord" 
+          class="back-btn"
+          :disabled="currentWordIndex === 0"
+        >
+          ← Föregående
+        </button>
         <div class="progress-info">
           <span class="progress-text">Ord {{ currentWordIndex + 1 }} av {{ words.length }}</span>
           <div class="progress-bar">
             <div class="progress-fill" :style="progressBarStyle"></div>
           </div>
         </div>
+        
+        <button @click="cancelPractice" class="cancel-btn">
+          🏠 Avbryt
+        </button>
       </div>
 
       <div class="practice-content">
@@ -37,35 +47,47 @@
                 success: recognitionSuccess,
                 error: recognitionError && hasAttempted && !recognitionSuccess
               }"
-              :disabled="audioLoading || recognitionLoading"
+              :disabled="audioLoading || recognitionLoading || currentWord.completed"
             >
               <span v-if="recognitionLoading">⏳</span>
               <span v-else-if="isListening" class="pulse-animation">🎤●</span>
               <span v-else-if="recognitionSuccess">✅</span>
               <span v-else-if="recognitionError && hasAttempted">❌</span>
+              <span v-else-if="currentWord.completed">🔒</span>
               <span v-else>🎤</span>
             </button>
             
             <div class="recognition-status">
-              <p v-if="!hasAttempted && !isListening" class="instruction">
+              <p v-if="!hasAttempted && !isListening && !currentWord.completed" class="instruction">
                 Tryck på mikrofonen och säg ordet på engelska
+              </p>
+              
+              <!-- Uppspelningsknapp för inspelning -->
+              <div v-if="currentWord.completed && currentWord.audioUrl" class="playback-controls">
+                <button @click="playRecording(currentWord.audioUrl)" class="play-recording-btn">
+                  ▶️ Spela upp ditt uttal
+                </button>
+              </div>
+              
+              <p v-if="currentWord.completed" class="completed">
+                ✅ Redan avklarat: "<strong>{{ currentWord.userAnswer || 'Rätt' }}</strong>"
               </p>
               <p v-if="isListening" class="listening">
                 🎯 Lyssnar... <strong>{{ listeningTime }}s</strong>
               </p>
-              <p v-if="userSpeech && !isListening" class="user-speech">
+              <p v-if="userSpeech && !isListening && !currentWord.completed" class="user-speech">
                 Du sa: "<strong>{{ userSpeech }}</strong>"
               </p>
-              <p v-if="hasAttempted && !isListening && !recognitionSuccess" class="try-again">
+              <p v-if="hasAttempted && !isListening && !recognitionSuccess && !currentWord.completed" class="try-again">
                 Försök igen! Rätt svar är "<strong>{{ currentWord.english }}</strong>"
               </p>
-              <p v-if="recognitionSuccess" class="success">
+              <p v-if="recognitionSuccess && !currentWord.completed" class="success">
                 🎉 Perfekt! "<strong>{{ userSpeech }}</strong>"
               </p>
             </div>
           </div>
 
-          <div v-if="showFeedback" class="feedback-section">
+          <div v-if="showFeedback && !currentWord.completed" class="feedback-section">
             <div class="feedback-bubble" :class="feedbackClass">
               <div class="feedback-emoji">{{ feedbackEmoji }}</div>
               <div class="feedback-text">{{ feedbackText }}</div>
@@ -73,9 +95,7 @@
                 <button 
                   v-if="!recognitionSuccess"
                   @click="tryAgain" 
-                  class="action-btn try-again-btn"
-                  :class="{ 'try-again-btn-non-success': !recognitionSuccess }"
-                >
+                  class="action-btn try-again-btn"                >
                   🔄 Försök igen
                 </button>
                 <button @click="nextWord" class="action-btn next-btn">
@@ -83,6 +103,31 @@
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div v-if="currentWord.completed" class="navigation-controls">
+          <div class="nav-buttons">
+            <button 
+              @click="goToPreviousWord" 
+              class="nav-btn prev-btn"
+              :disabled="currentWordIndex === 0"
+            >
+              ← Föregående ord
+            </button>
+            <button 
+              @click="nextWord" 
+              class="nav-btn next-btn"
+            >
+              {{ isLastWord ? 'Avsluta' : 'Nästa ord' }} →
+            </button>
+            <button 
+              v-if="isLastWord" 
+              @click="finishPractice" 
+              class="nav-btn finish-btn"
+            >
+              🏁 Avsluta övning
+            </button>
           </div>
         </div>
 
@@ -147,6 +192,14 @@ export default {
       { english: "Dog", swedish: "Hund" }
     ];
 
+    const wordsWithStatus = shuffleArray(allWords).slice(0, 10).map(word => ({
+      ...word,
+      completed: false,
+      userAnswer: '',
+      success: false,
+      audioUrl: null
+    }));
+
     return {
       currentWordIndex: 0,
       audioLoading: false,
@@ -154,16 +207,18 @@ export default {
       isListening: false,
       hasAttempted: false,
       recognitionSuccess: false,
-      recognitionError: false, // Nu mer specifik för ett misslyckat försök
+      recognitionError: false,
       showFeedback: false,
       listeningTime: 0,
       listeningTimer: null,
       userSpeech: '',
       score: 0,
-      words: shuffleArray(allWords).slice(0, 10),
+      words: wordsWithStatus,
       allWords: allWords,
       shuffleArray: shuffleArray,
       recognition: null,
+      mediaRecorder: null,
+      audioChunks: [],
       isSpeechSupported: 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window
     }
   },
@@ -177,13 +232,11 @@ export default {
     progressBarStyle() {
       const progress = ((this.currentWordIndex + 1) / this.words.length) * 100;
       return { width: `${progress}%` };
-    },
-    feedbackClass() {
-      // Ändra till 'encouraging' om det var ett felaktigt försök
+    },    feedbackClass() {
       return this.recognitionSuccess ? 'correct' : 'incorrect'; 
     },
     feedbackEmoji() {
-      return this.recognitionSuccess ? '🎉' : '🤔'; // Ändrade '💡' till '🤔' för icke-korrekt
+      return this.recognitionSuccess ? '🎉' : '🤔';
     },
     feedbackText() {
       return this.recognitionSuccess 
@@ -192,9 +245,55 @@ export default {
     }
   },
   methods: {
+    cancelPractice() {
+      if (confirm('Vill du avbryta övningen? Ditt framsteg kommer att sparas.')) {
+        this.saveProgress();
+        this.$router.push('/dashboard');
+      }
+    },
+
+    playRecording(audioUrl) {
+      if (audioUrl) {
+        const audio = new Audio(audioUrl);
+        audio.play().catch(error => {
+          console.error('Kunde inte spela upp inspelningen:', error);
+        });
+      }
+    },
+
+    goToPreviousWord() {
+      if (this.currentWordIndex > 0) {
+        this.currentWordIndex--;
+        this.loadWordState();
+      }
+    },
+
+    loadWordState() {
+      this.stopRecognition();
+      const word = this.currentWord;
+      
+      this.hasAttempted = !!word.userAnswer || word.completed; 
+      this.recognitionSuccess = word.success;
+      this.recognitionError = word.completed && !word.success;
+      this.userSpeech = word.userAnswer;
+      this.showFeedback = word.completed && !word.success;
+      
+      if (word.completed && word.success) {
+        this.showFeedback = false; 
+      } else if (word.completed && !word.success) {
+        this.showFeedback = true; 
+      } else {
+        this.resetWordState();
+      }
+
+      this.recognitionLoading = false;
+      this.listeningTime = 0;
+    },
+
     async playWordAudio() {
       await this.playAudio(this.currentWord.english);
     },
+
     async playAudio(text) {
       try {
         if (this.audioLoading) return;
@@ -226,6 +325,7 @@ export default {
         this.audioLoading = false;
       }
     },
+
     initSpeechRecognition() {
       if (!this.isSpeechSupported) return null;
       
@@ -239,25 +339,33 @@ export default {
       
       return recognition;
     },
+
     async toggleRecognition() {
+      if (this.currentWord.completed) return;
+      
       if (this.isListening) {
         this.stopRecognition();
       } else {
-        await this.startRecognition();
+        await this.startRecording();
       }
     },
-    async startRecognition() {
+
+    async startRecording() {
       if (!this.isSpeechSupported) {
         alert('Röstigenkänning stöds inte i din webbläsare. Prova Chrome eller Edge.');
         return;
       }
       
+      if (this.currentWord.completed) return;
+      
       try {
+        await this.startAudioRecording();
+        
         this.recognitionLoading = true;
         this.userSpeech = '';
         this.recognitionSuccess = false;
         this.recognitionError = false;
-        this.showFeedback = false; // Dölj feedback vid nytt försök
+        this.showFeedback = false;
         
         this.recognition = this.initSpeechRecognition();
         
@@ -269,9 +377,7 @@ export default {
           this.isListening = true;
           this.recognitionLoading = false;
           this.listeningTime = 0;
-          this.listeningTimer = setInterval(() => {
-            this.listeningTime++;
-            // Auto-stop after 5 seconds
+          this.listeningTimer = setInterval(() => {            this.listeningTime++;
             if (this.listeningTime >= 5) {
               this.stopRecognition();
             }
@@ -279,43 +385,56 @@ export default {
         };
         
         this.recognition.onresult = (event) => {
-          const speechResult = event.results[0][0].transcript.trim(); // Behåll case för visning
+          const speechResult = event.results[0][0].transcript.trim();
           const normalizedSpeechResult = speechResult.toLowerCase();
           const expectedWord = this.currentWord.english.toLowerCase();
           
           this.userSpeech = speechResult;
           this.hasAttempted = true;
           
-          // Använd en enklare jämförelse för engelska ord
-          if (normalizedSpeechResult === expectedWord) {
-            this.recognitionSuccess = true;
-            this.recognitionError = false;
-            this.score += 10;
+          const isCorrect = normalizedSpeechResult === expectedWord;
+
+          this.recognitionSuccess = isCorrect;
+          this.recognitionError = !isCorrect;
+          
+          if (isCorrect) {
+             this.score += 10;
           } else {
-            this.recognitionSuccess = false;
-            this.recognitionError = true;
-            this.score += 2; // Small points for attempting
+             this.score += 2;
           }
           
-          this.showFeedback = true;
+          this.stopAudioRecording().then(audioUrl => {
+            this.words[this.currentWordIndex].completed = true;
+            this.words[this.currentWordIndex].success = isCorrect;
+            this.words[this.currentWordIndex].userAnswer = speechResult;
+            this.words[this.currentWordIndex].audioUrl = audioUrl;
+            
+            this.showFeedback = true;
+          });
         };
         
         this.recognition.onerror = (event) => {
           console.error('Speech recognition error:', event.error);
           this.recognitionSuccess = false;
           this.recognitionError = true;
-          if (!this.userSpeech) {
+          if (!this.userSpeech || event.error === 'no-speech') {
              this.userSpeech = 'Kunde inte höra tydligt...';
           }
           this.hasAttempted = true;
-          this.showFeedback = true;
+          
+          this.stopAudioRecording().then(audioUrl => {
+            this.words[this.currentWordIndex].completed = true;
+            this.words[this.currentWordIndex].success = false;
+            this.words[this.currentWordIndex].userAnswer = this.userSpeech;
+            this.words[this.currentWordIndex].audioUrl = audioUrl;
+            
+            this.showFeedback = true;
+          });
         };
         
         this.recognition.onend = () => {
           this.stopRecognition();
-          // Sätt feedback om den inte redan visats av onresult/onerror
-          if (!this.showFeedback) {
-             this.hasAttempted = true;
+          if (!this.showFeedback && this.hasAttempted) {
              this.recognitionError = true;
              this.showFeedback = true;
           }
@@ -327,9 +446,44 @@ export default {
         console.error('Speech recognition failed:', error);
         this.recognitionLoading = false;
         this.recognitionError = true;
+        this.stopAudioRecording();
         alert('Kunde inte starta röstigenkänning. Kontrollera mikrofontillåtelser.');
       }
     },
+
+    async startAudioRecording() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        this.mediaRecorder = new MediaRecorder(stream);
+        this.audioChunks = [];
+        
+        this.mediaRecorder.ondataavailable = (event) => {
+          this.audioChunks.push(event.data);
+        };
+        
+        this.mediaRecorder.start();
+      } catch (error) {
+        console.error('Kunde inte starta ljudinspelning:', error);
+      }
+    },
+
+    async stopAudioRecording() {
+      return new Promise((resolve) => {
+        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+          this.mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(this.audioChunks, { type: 'audio/wav' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            resolve(audioUrl);
+            
+            this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+          };
+          this.mediaRecorder.stop();
+        } else {
+          resolve(null);
+        }
+      });
+    },
+
     stopRecognition() {
       if (this.recognition && this.isListening) {
         this.recognition.stop();
@@ -341,19 +495,29 @@ export default {
         this.listeningTimer = null;
       }
     },
+
     tryAgain() {
-      this.resetWordState();
+      if (this.currentWord.completed && !this.currentWord.success) {
+        this.resetWordState();
+        this.words[this.currentWordIndex].completed = false;
+        this.words[this.currentWordIndex].success = false;
+        this.words[this.currentWordIndex].userAnswer = '';
+        this.words[this.currentWordIndex].audioUrl = null;
+        this.hasAttempted = false;
+      }
     },
+
     nextWord() {
       if (this.isLastWord) {
         this.finishPractice();
       } else {
         this.currentWordIndex++;
-        this.resetWordState();
+        this.loadWordState();
       }
     },
+
     resetWordState() {
-      this.stopRecognition(); // Säkerställ att igenkänningen stoppas
+      this.stopRecognition();
       this.hasAttempted = false;
       this.recognitionSuccess = false;
       this.recognitionError = false;
@@ -362,42 +526,39 @@ export default {
       this.listeningTime = 0;
       this.recognitionLoading = false;
     },
+
     finishPractice() {
       this.saveProgress();
       alert(`Övning avslutad! 🎉\nDu fick ${this.score} poäng för ${this.words.length} ord!`);
-      // Simulerar router push - byt ut med din faktiska routelogik
-      console.log('Navigera till /dashboard');
-      // this.$router.push('/dashboard'); 
+      this.$router.push('/dashboard');
     },
+
     saveProgress() {
-      // Simulerar lagring av framsteg
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
       progress.speakingPractice = (progress.speakingPractice || 0) + 1;
-      progress.learnedWords = Math.min(125, (progress.learnedWords || 0) + Math.floor(this.score / 5));
+      const correctWords = this.words.filter(w => w.success).length;
+      progress.learnedWords = Math.min(125, (progress.learnedWords || 0) + Math.floor(correctWords / 2));
       localStorage.setItem('learningProgress', JSON.stringify(progress));
-    },
-    goBack() {
-      this.stopRecognition();
-      // Simulerar router back
-      console.log('Gå tillbaka');
-      // this.$router.back();
     }
   },
-  beforeUnmount() {
-    this.stopRecognition();
-  },
-  // Lägg till created-hook för att initiera recognition
-  created() {
-    // Initialisera recognition-objektet tidigt
+
+  mounted() {
     if (this.isSpeechSupported) {
       this.recognition = this.initSpeechRecognition();
     }
+    this.loadWordState();
+  },
+
+  beforeUnmount() {
+    this.stopRecognition();
+    this.words.forEach(word => {
+      if (word.audioUrl) {
+        URL.revokeObjectURL(word.audioUrl);
+      }
+    });
   }
 }
-</script>
-
-<style scoped>
-/* Globals */
+</script><style scoped>
 .practice-page {
   min-height: 100vh;
   background-color: #f7f3ed;
@@ -408,14 +569,12 @@ export default {
 .practice-container {
   max-width: 600px;
   margin: 0 auto;
-}
-
-/* Header */
-.practice-header {
+}.practice-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
+  gap: 15px;
 }
 
 .back-btn {
@@ -429,12 +588,37 @@ export default {
   transition: all 0.3s ease;
 }
 
-.back-btn:hover {
+.back-btn:hover:not(:disabled) {
   transform: translateX(-5px);
 }
 
+.back-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.cancel-btn {
+  background: linear-gradient(135deg, #FF6B6B, #FF5252);
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cancel-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(255,107,107,0.3);
+}
+
 .progress-info {
-  text-align: right;
+  text-align: center;
 }
 
 .progress-text {
@@ -456,10 +640,7 @@ export default {
   height: 100%;
   background: linear-gradient(135deg, #4ECDC4, #44A08D);
   transition: width 0.3s ease;
-}
-
-/* Word Section */
-.practice-content {
+}.practice-content {
   text-align: center;
 }
 
@@ -517,10 +698,7 @@ export default {
   font-size: 1.3em;
   color: #666;
   font-style: italic;
-}
-
-/* Recognition Section - NEW/UPDATED STYLES */
-.recognition-section {
+}.recognition-section {
   background: white;
   padding: 30px;
   border-radius: 20px;
@@ -555,7 +733,7 @@ export default {
 .record-btn.recording {
   background: linear-gradient(135deg, #FF6B6B, #FF5252);
   animation: pulse 1s infinite;
-  color: white; /* Ensure text/emoji is white when recording */
+  color: white;
 }
 
 .record-btn.success {
@@ -571,6 +749,8 @@ export default {
 .record-btn:disabled {
   cursor: not-allowed;
   opacity: 0.7;
+  transform: none;
+  animation: none;
 }
 
 .pulse-animation {
@@ -616,7 +796,39 @@ export default {
   font-weight: bold;
 }
 
-/* Feedback Section */
+.completed {
+  color: #4ECDC4;
+  font-weight: bold;
+  background: #f0f9f8;
+  padding: 8px 15px;
+  border-radius: 10px;
+  border-left: 4px solid #4ECDC4;
+  display: inline-block;
+}
+
+.playback-controls {
+  margin: 15px 0;
+}
+
+.play-recording-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.play-recording-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(102,126,234,0.3);
+}
+
 .feedback-section {
   margin-top: 20px;
 }
@@ -634,8 +846,7 @@ export default {
 }
 
 .feedback-bubble.incorrect {
-  /* Använder en mer dämpad färg för "inte perfekt" istället för rött */
-  background: linear-gradient(135deg, #FFD700, #FF8E00); 
+  background: linear-gradient(135deg, #FFD700, #FF8E00);
   color: white;
 }
 
@@ -666,8 +877,7 @@ export default {
 }
 
 .try-again-btn {
-  /* Uppdaterade färger för att fungera med incorrect/encouraging bubble */
-  background: rgba(255,255,255,0.2); 
+  background: rgba(255,255,255,0.2);
   color: white;
   border: 2px solid white;
 }
@@ -682,13 +892,65 @@ export default {
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
-/* Tips Section */
+.navigation-controls {
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  margin-top: 20px;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.nav-btn {
+  border: none;
+  padding: 12px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.prev-btn {
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+  color: white;
+}
+
+.next-btn {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  color: white;
+}
+
+.finish-btn {
+  background: linear-gradient(135deg, #FFD700, #FF8E00);
+  color: white;
+}
+
+.nav-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
 .tips-section {
   background: white;
   padding: 20px;
   border-radius: 15px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-  margin-bottom: 20px; /* Lägg till lite marginal */
+  margin-top: 20px;
 }
 
 .tip-bubble {
@@ -722,10 +984,7 @@ export default {
 .tip-content li {
   margin-bottom: 5px;
   color: #666;
-}
-
-/* Browser Warning - NEW/UPDATED STYLES */
-.browser-warning {
+}.browser-warning {
   background: linear-gradient(135deg, #FFD700, #FF8E00);
   color: white;
   padding: 20px;
@@ -754,24 +1013,26 @@ export default {
   margin: 0;
   opacity: 0.9;
   font-size: 0.9em;
-}
-
-
-/* Animations */
-@keyframes slideUp {
+}@keyframes slideUp {
   0% { transform: translateY(20px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
-}
-
-/* Media Queries */
-@media (max-width: 768px) {
+}@media (max-width: 768px) {
   .practice-header {
-    flex-direction: column;
-    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  
+  .back-btn, .cancel-btn {
+    flex-basis: 40%;
+    text-align: center;
+    justify-content: center;
   }
   
   .progress-info {
-    text-align: center;
+    order: -1;
+    width: 100%;
+    margin-bottom: 10px;
   }
   
   .word-english {
@@ -779,7 +1040,7 @@ export default {
     gap: 10px;
   }
   
-  .feedback-actions {
+  .feedback-actions, .nav-buttons {
     flex-direction: column;
   }
 }
