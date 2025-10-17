@@ -1,15 +1,20 @@
 import express from "express";
-import userRoutes from "./routes/userRoutes.js"
+import userRoutes from "./routes/userRoutes.js";
+import cors from "cors";
 
 const app = express();
-const port = 9001;
+const PORT = 9001;
 
-app.get("/hello", (req, res) => {
-	res.send("hello world");
-});
+// Lägg till CORS middleware
+app.use(cors({
+  origin: "http://localhost:5173", // Vue dev server
+  credentials: true
+}));
 
-app.use("/users", userRoutes);
+app.use(express.json());
 
-app.listen(port, () => {
-	console.log(`Server has started on port ${port}`);
+app.use("/api/users", userRoutes);
+
+app.listen(PORT, () => {
+  console.log(`Server has started on port ${PORT}`);
 });
