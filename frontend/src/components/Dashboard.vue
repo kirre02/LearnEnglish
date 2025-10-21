@@ -189,39 +189,33 @@ export default {
     this.loadProgress();
   },
   methods: {
-    loadProgress() {
-      const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
-      this.learnedWords = progress.learnedWords || 0;
-      this.completedQuizzes = progress.completedQuizzes || 0;
-    },
-    saveProgress() {
-      const progress = {
-        learnedWords: this.learnedWords,
-        completedQuizzes: this.completedQuizzes
-      };
-      localStorage.setItem('learningProgress', JSON.stringify(progress));
-    },
-    handleLogout() {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      this.$router.push('/');
-    },
-    navigateToSection(section) {
-      alert(`Öppnar ${section} - kommer snart!`);
-    },
-    startQuickPractice(type) {
-      const types = {
-        'listen': 'Lyssna',
-        'match': 'Matcha', 
-        'speak': 'Upprepa',
-        'mix': 'Blandat'
-      };
-      alert(`${types[type]} övning kommer snart!`);
-    },
-    startQuiz() {
-      this.$router.push('/quiz');
-    }
+  loadProgress() {
+    const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
+    this.learnedWords = progress.learnedWords || 0;
+    this.completedQuizzes = progress.completedQuizzes || 0;
+  },
+  saveProgress() {
+    const progress = {
+      learnedWords: this.learnedWords,
+      completedQuizzes: this.completedQuizzes
+    };
+    localStorage.setItem('learningProgress', JSON.stringify(progress));
+  },
+  handleLogout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    this.$router.push('/');
+  },
+  navigateToSection(section) {
+    alert(`Öppnar ${section} - kommer snart!`);
+  },
+  startQuickPractice(type) {
+    this.$router.push(`/practice/${type}`);
+  },
+  startQuiz() {
+    this.$router.push('/quiz');
   }
+}
 }
 </script>
 
