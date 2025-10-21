@@ -1,0 +1,507 @@
+<template>
+  <div class="quiz-page-container">
+    <div class="quiz-container">
+      <!-- Quiz Header -->
+      <div class="quiz-header">
+        <button @click="goBack" class="back-btn">← Tillbaka</button>
+        <div class="quiz-progress">
+          <span class="progress-text">Fråga {{ currentQuestionIndex + 1 }} av {{ questions.length }}</span>
+          <div class="progress-bar">
+            <div class="progress-fill" :style="progressBarStyle"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quiz Content -->
+      <div v-if="!quizFinished" class="quiz-content">
+        <!-- Question Bubble -->
+        <div class="question-bubble">
+          <div class="question-emoji">🧠</div>
+          <h2>{{ currentQuestion.question }}</h2>
+          <div class="question-hint" v-if="currentQuestion.hint">
+            💡 {{ currentQuestion.hint }}
+          </div>
+        </div>
+
+        <!-- Options -->
+        <div class="options-container">
+          <button 
+            v-for="(option, index) in currentQuestion.options" 
+            :key="index"
+            @click="checkAnswer(option)"
+            :class="['option-btn', getOptionClass(option)]"
+            :disabled="answered"
+          >
+            <span class="option-emoji">{{ getOptionEmoji(index) }}</span>
+            <span class="option-text">{{ option }}</span>
+          </button>
+        </div>
+
+        <!-- Feedback -->
+        <div v-if="answered" class="feedback-bubble" :class="feedbackClass">
+          <div class="feedback-emoji">{{ feedbackEmoji }}</div>
+          <div class="feedback-text">{{ feedbackText }}</div>
+          <button @click="nextQuestion" class="next-btn">
+            {{ isLastQuestion ? 'Se resultat' : 'Nästa fråga' }} →
+          </button>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div v-else class="results-container">
+        <div class="results-bubble" :class="resultsClass">
+          <div class="results-emoji">{{ resultsEmoji }}</div>
+          <h2>{{ resultsTitle }}</h2>
+          <p class="results-score">{{ score }} av {{ questions.length }} rätt!</p>
+          <p class="results-message">{{ resultsMessage }}</p>
+          
+          <div class="results-actions">
+            <button @click="restartQuiz" class="action-btn play-again-btn">
+              🎮 Spela igen
+            </button>
+            <button @click="goToDashboard" class="action-btn dashboard-btn">
+              🏠 Till dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'Quiz',
+  data() {
+    return {
+      score: 0,
+      currentQuestionIndex: 0,
+      answered: false,
+      selectedAnswer: null,
+      quizFinished: false,
+      questions: [
+        {
+          question: "Vad betyder 'Hello' på svenska?",
+          options: ["Hej", "Adjö", "Tack", "Ursäkta"],
+          correctAnswer: "Hej",
+          hint: "Det är det första man säger när man träffar någon"
+        },
+        {
+          question: "Vad är 'Apple' på svenska?",
+          options: ["Päron", "Banan", "Äpple", "Apelsin"],
+          correctAnswer: "Äpple",
+          hint: "Ett rött eller grönt frukt"
+        },
+        {
+          question: "Vad betyder 'Thank you'?",
+          options: ["Förlåt", "Tack", "Varsågod", "Hej då"],
+          correctAnswer: "Tack",
+          hint: "Säger man när någon ger dig något"
+        },
+        {
+          question: "Hur säger man 'Water' på svenska?",
+          options: ["Mjölk", "Juice", "Vatten", "Kaffe"],
+          correctAnswer: "Vatten",
+          hint: "Vätska man dricker när man är törstig"
+        },
+        {
+          question: "Vad betyder 'Goodbye'?",
+          options: ["God morgon", "God natt", "Hej då", "Välkommen"],
+          correctAnswer: "Hej då",
+          hint: "Säger man när man lämnar"
+        }
+      ]
+    }
+  },
+  computed: {
+    currentQuestion() {
+      return this.questions[this.currentQuestionIndex];
+    },
+    isLastQuestion() {
+      return this.currentQuestionIndex === this.questions.length - 1;
+    },
+    progressBarStyle() {
+      const progress = ((this.currentQuestionIndex + 1) / this.questions.length) * 100;
+      return { width: `${progress}%` };
+    },
+    feedbackClass() {
+      return this.selectedAnswer === this.currentQuestion.correctAnswer ? 'correct' : 'incorrect';
+    },
+    feedbackEmoji() {
+      return this.selectedAnswer === this.currentQuestion.correctAnswer ? '🎉' : '💡';
+    },
+    feedbackText() {
+      return this.selectedAnswer === this.currentQuestion.correctAnswer 
+        ? 'Rätt svar! Bra jobbat!' 
+        : `Rätt svar är: ${this.currentQuestion.correctAnswer}`;
+    },
+    resultsClass() {
+      const percentage = (this.score / this.questions.length) * 100;
+      if (percentage >= 80) return 'excellent';
+      if (percentage >= 60) return 'good';
+      return 'ok';
+    },
+    resultsEmoji() {
+      const percentage = (this.score / this.questions.length) * 100;
+      if (percentage >= 80) return '🏆';
+      if (percentage >= 60) return '⭐';
+      return '👍';
+    },
+    resultsTitle() {
+      const percentage = (this.score / this.questions.length) * 100;
+      if (percentage >= 80) return 'Fantastiskt!';
+      if (percentage >= 60) return 'Bra jobbat!';
+      return 'Bra försök!';
+    },
+    resultsMessage() {
+      const percentage = (this.score / this.questions.length) * 100;
+      if (percentage >= 80) return 'Du är en riktig engelskexpert!';
+      if (percentage >= 60) return 'Du kan mycket engelska!';
+      return 'Fortsätt öva, du blir bättre!';
+    }
+  },
+  methods: {
+    getOptionEmoji(index) {
+      const emojis = ['🇦', '🇧', '🇨', '🇩'];
+      return emojis[index];
+    },
+    getOptionClass(option) {
+      if (!this.answered) return '';
+      if (option === this.currentQuestion.correctAnswer) return 'correct';
+      if (option === this.selectedAnswer) return 'incorrect';
+      return '';
+    },
+    checkAnswer(selectedAnswer) {
+      this.answered = true;
+      this.selectedAnswer = selectedAnswer;
+      
+      if (selectedAnswer === this.currentQuestion.correctAnswer) {
+        this.score++;
+      }
+    },
+    nextQuestion() {
+      if (this.isLastQuestion) {
+        this.finishQuiz();
+      } else {
+        this.currentQuestionIndex++;
+        this.answered = false;
+        this.selectedAnswer = null;
+      }
+    },
+    finishQuiz() {
+      this.quizFinished = true;
+      this.updateProgress();
+    },
+    updateProgress() {
+      const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
+      progress.completedQuizzes = (progress.completedQuizzes || 0) + 1;
+      progress.learnedWords = Math.min(125, (progress.learnedWords || 0) + this.score * 2);
+      localStorage.setItem('learningProgress', JSON.stringify(progress));
+    },
+    restartQuiz() {
+      this.score = 0;
+      this.currentQuestionIndex = 0;
+      this.answered = false;
+      this.selectedAnswer = null;
+      this.quizFinished = false;
+    },
+    goBack() {
+      this.$router.back();
+    },
+    goToDashboard() {
+      this.$router.push('/dashboard');
+    }
+  }
+}
+</script>
+
+<style scoped>
+.quiz-page-container {
+  min-height: 100vh;
+  background-color: #f7f3ed;
+  padding: 20px;
+  font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+}
+
+.quiz-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Quiz Header */
+.quiz-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.back-btn {
+  background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  transform: translateX(-5px);
+}
+
+.quiz-progress {
+  text-align: right;
+}
+
+.progress-text {
+  display: block;
+  margin-bottom: 5px;
+  color: #666;
+  font-size: 0.9em;
+}
+
+.progress-bar {
+  width: 150px;
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+  transition: width 0.3s ease;
+}
+
+/* Question Bubble - SAMMA FÄRG SOM QUIZ-KORTET */
+.question-bubble {
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+  color: white;
+  padding: 30px;
+  border-radius: 25px;
+  text-align: center;
+  margin-bottom: 30px;
+  box-shadow: 0 10px 25px rgba(255,154,139,0.3);
+}
+
+.question-emoji {
+  font-size: 3em;
+  margin-bottom: 15px;
+}
+
+.question-bubble h2 {
+  margin: 0 0 15px 0;
+  font-size: 1.5em;
+}
+
+.question-hint {
+  background: rgba(255,255,255,0.2);
+  padding: 10px 15px;
+  border-radius: 15px;
+  font-size: 0.9em;
+  margin-top: 15px;
+}
+
+/* Options */
+.options-container {
+  display: grid;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.option-btn {
+  background: white;
+  border: 3px solid #E2E8F0;
+  padding: 20px;
+  border-radius: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  transition: all 0.3s ease;
+  font-size: 1.1em;
+  font-weight: bold;
+}
+
+.option-btn:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.option-btn.correct {
+  border-color: #4ECDC4;
+  background: #4ECDC4;
+  color: white;
+}
+
+.option-btn.incorrect {
+  border-color: #FF6B6B;
+  background: #FF6B6B;
+  color: white;
+}
+
+.option-btn:disabled {
+  cursor: not-allowed;
+}
+
+.option-emoji {
+  font-size: 1.2em;
+}
+
+/* Feedback */
+.feedback-bubble {
+  padding: 25px;
+  border-radius: 20px;
+  text-align: center;
+  animation: slideUp 0.5s ease-out;
+}
+
+.feedback-bubble.correct {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  color: white;
+}
+
+.feedback-bubble.incorrect {
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+  color: white;
+}
+
+.feedback-emoji {
+  font-size: 3em;
+  margin-bottom: 15px;
+}
+
+.feedback-text {
+  font-size: 1.2em;
+  margin-bottom: 20px;
+}
+
+.next-btn {
+  background: white;
+  color: #333;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1em;
+  transition: all 0.3s ease;
+}
+
+.next-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* Results - SAMMA FÄRG SOM QUIZ-KORTET */
+.results-bubble {
+  padding: 40px;
+  border-radius: 25px;
+  text-align: center;
+  color: white;
+  animation: bounceIn 0.8s ease-out;
+}
+
+.results-bubble.excellent {
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+}
+
+.results-bubble.good {
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+}
+
+.results-bubble.ok {
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+}
+
+.results-emoji {
+  font-size: 4em;
+  margin-bottom: 20px;
+}
+
+.results-bubble h2 {
+  margin: 0 0 15px 0;
+  font-size: 2em;
+}
+
+.results-score {
+  font-size: 1.5em;
+  margin: 0 0 15px 0;
+  font-weight: bold;
+}
+
+.results-message {
+  font-size: 1.1em;
+  margin: 0 0 30px 0;
+  opacity: 0.9;
+}
+
+.results-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  border: none;
+  padding: 15px 25px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1em;
+  transition: all 0.3s ease;
+  color: white;
+}
+
+.play-again-btn {
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
+}
+
+.dashboard-btn {
+  background: rgba(0,0,0,0.2);
+  backdrop-filter: blur(10px);
+}
+
+.action-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* Animations */
+@keyframes slideUp {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.05); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .quiz-header {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .quiz-progress {
+    text-align: center;
+  }
+  
+  .results-actions {
+    flex-direction: column;
+  }
+  
+  .action-btn {
+    width: 100%;
+  }
+}
+</style>
