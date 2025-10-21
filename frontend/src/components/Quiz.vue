@@ -210,9 +210,39 @@ export default {
     },
     goToDashboard() {
       this.$router.push('/dashboard');
+    },
+
+    // --- RandomWords metoder ---
+    fetchQuizQuestions() {
+      fetch('http://localhost:9001/api/words') // ändrat
+        .then(res => res.json())
+        .then(data => {
+          this.questions = data.map(word => {
+            const options = [word.swedish];
+            while (options.length < 4) {
+              const randomWord = data[Math.floor(Math.random() * data.length)].swedish;
+              if (!options.includes(randomWord)) options.push(randomWord);
+            }
+            return {
+              question: `Vad betyder '${word.english}' på svenska?`,
+              options: this.shuffleArray(options),
+              correctAnswer: word.swedish,
+              hint: `Tips: Glosan börjar på '${word.swedish[0]}'`
+            };
+          });
+        })
+        .catch(err => console.error("Fel vid hämtning av glosor för quiz:", err));
+    },
+    shuffleArray(array) {
+      return array.sort(() => Math.random() - 0.5);
+    }
+  },
+  mounted() {
+    this.fetchQuizQuestions();
+
     }
   }
-}
+
 </script>
 
 <style scoped>
@@ -276,7 +306,6 @@ export default {
   transition: width 0.3s ease;
 }
 
-/* Question Bubble - SAMMA FÄRG SOM QUIZ-KORTET */
 .question-bubble {
   background: linear-gradient(135deg, #FF9A8B, #FF6A88);
   color: white;
