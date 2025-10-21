@@ -1,102 +1,107 @@
 <template>
-  <div class="register-form">
-    <h2>Skapa konto</h2>
-    <form @submit.prevent="handleRegister">
-      <!-- Namn -->
-      <div class="form-group">
-        <label for="name">Namn:</label>
-        <input 
-          type="text" 
-          id="name" 
-          v-model="name" 
-          required 
-          placeholder="Ange ditt namn"
-          :class="{ 'error': nameError }"
-        />
-        <span v-if="nameError" class="error-text">{{ nameError }}</span>
-      </div>
-
-      <!-- E-post -->
-      <div class="form-group">
-        <label for="email">E-post:</label>
-        <input 
-          type="email" 
-          id="email" 
-          v-model="email" 
-          required 
-          placeholder="Ange din e-post"
-          :class="{ 'error': emailError }"
-        />
-        <span v-if="emailError" class="error-text">{{ emailError }}</span>
-      </div>
-
-      <!-- Lösenord -->
-      <div class="form-group password-group">
-        <label for="password">Lösenord:</label>
-        <div class="password-input-container">
+  <div class="page-wrapper">
+    <div class="register-form">
+      <h2>Skapa konto</h2>
+      <form @submit.prevent="handleRegister">
+        <!-- Namn -->
+        <div class="form-group">
+          <label for="name">Namn:</label>
           <input 
-            :type="showPassword ? 'text' : 'password'" 
-            id="password" 
-            v-model="password" 
+            type="text" 
+            id="name" 
+            v-model="name" 
             required 
-            placeholder="Välj ett lösenord"
-            :class="{ 'error': passwordError }"
+            placeholder="Ange ditt namn"
+            :class="{ 'error': nameError }"
           />
-          <button 
-            type="button" 
-            class="toggle-password"
-            @click="showPassword = !showPassword"
-            :aria-label="showPassword ? 'Dölj lösenord' : 'Visa lösenord'"
-          >
-            {{ showPassword ? '🙈' : '👁️' }}
-          </button>
+          <span v-if="nameError" class="error-text">{{ nameError }}</span>
         </div>
-        <span v-if="passwordError" class="error-text">{{ passwordError }}</span>
-      </div>
 
-      <!-- Bekräfta lösenord -->
-      <div class="form-group password-group">
-        <label for="confirmPassword">Bekräfta lösenord:</label>
-        <div class="password-input-container">
+        <!-- E-post -->
+        <div class="form-group">
+          <label for="email">E-post:</label>
           <input 
-            :type="showConfirmPassword ? 'text' : 'password'" 
-            id="confirmPassword" 
-            v-model="confirmPassword" 
+            type="email" 
+            id="email" 
+            v-model="email" 
             required 
-            placeholder="Bekräfta lösenord"
-            :class="{ 'error': confirmPasswordError }"
+            placeholder="Ange din e-post"
+            :class="{ 'error': emailError }"
           />
-          <button 
-            type="button" 
-            class="toggle-password"
-            @click="showConfirmPassword = !showConfirmPassword"
-            :aria-label="showConfirmPassword ? 'Dölj lösenord' : 'Visa lösenord'"
-          >
-            {{ showConfirmPassword ? '🙈' : '👁️' }}
-          </button>
+          <span v-if="emailError" class="error-text">{{ emailError }}</span>
         </div>
-        <span v-if="confirmPasswordError" class="error-text">{{ confirmPasswordError }}</span>
+
+        <!-- Lösenord -->
+        <div class="form-group password-group">
+          <label for="password">Lösenord:</label>
+          <div class="password-input-container">
+            <input 
+              :type="showPassword ? 'text' : 'password'" 
+              id="password" 
+              v-model="password" 
+              required 
+              placeholder="Välj ett lösenord"
+              :class="{ 'error': passwordError }"
+            />
+            <button 
+              type="button" 
+              class="toggle-password"
+              @click="showPassword = !showPassword"
+              :aria-label="showPassword ? 'Dölj lösenord' : 'Visa lösenord'"
+            >
+              {{ showPassword ? '🙈' : '👁️' }}
+            </button>
+          </div>
+          <span v-if="passwordError" class="error-text">{{ passwordError }}</span>
+        </div>
+
+        <!-- Bekräfta lösenord -->
+        <div class="form-group password-group">
+          <label for="confirmPassword">Bekräfta lösenord:</label>
+          <div class="password-input-container">
+            <input 
+              :type="showConfirmPassword ? 'text' : 'password'" 
+              id="confirmPassword" 
+              v-model="confirmPassword" 
+              required 
+              placeholder="Bekräfta lösenord"
+              :class="{ 'error': confirmPasswordError }"
+            />
+            <button 
+              type="button" 
+              class="toggle-password"
+              @click="showConfirmPassword = !showConfirmPassword"
+              :aria-label="showConfirmPassword ? 'Dölj lösenord' : 'Visa lösenord'"
+            >
+              {{ showConfirmPassword ? '🙈' : '👁️' }}
+            </button>
+          </div>
+          <span v-if="confirmPasswordError" class="error-text">{{ confirmPasswordError }}</span>
+        </div>
+
+        <!-- Skicka -->
+        <button type="submit" class="register-btn" :disabled="loading">
+          {{ loading ? 'Registrerar...' : 'Registrera' }}
+        </button>
+      </form>
+
+      <div v-if="errorMessage" class="error-message">
+        {{ errorMessage }}
       </div>
 
-      <!-- Skicka -->
-      <button type="submit" class="register-btn" :disabled="loading">
-        {{ loading ? 'Registrerar...' : 'Registrera' }}
-      </button>
-    </form>
+      <div v-if="successMessage" class="success-message">
+        {{ successMessage }}
+      </div>
 
-    <div v-if="errorMessage" class="error-message">
-      {{ errorMessage }}
-    </div>
-
-    <div v-if="successMessage" class="success-message">
-      {{ successMessage }}
-    </div>
-
-    <div class="switch-link">
-      <p>Har du redan ett konto? <router-link to="/register">Logga in här</router-link></p>
+      <div class="switch-link">
+        <p>Har du redan ett konto? 
+          <router-link to="/">Logga in här</router-link>
+        </p>
+      </div>
     </div>
   </div>
 </template>
+
 
 <script>
 export default {
@@ -183,7 +188,7 @@ export default {
             email: this.email,
             password: this.password
           })
-        })
+        });
 
         if (!response.ok) {
           const err = await response.json()

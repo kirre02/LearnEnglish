@@ -16,31 +16,52 @@ export async function getAllUsers(req, res) {
 }
 
 export async function addUser(req, res) {
-	try {
-		const { name, email, password } = req.body;
-		if (!name || !email || !password) {
-			res.status(400).json({ message: "missing fields" });
-		}
+  try {
+    const { name, email, password } = req.body;
 
-		const hashed = await hashPassword(password);
-		const [result] = await db.query(
-			"INSERT INTO users (name, email, password_hash) VALUES (?,?,?)",
-			[name, email, hashed],
-		);
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "missing fields" });
+    }
 
-		res.status(200).json({
-			message: "User created successfully",
-			userId: result.insertId,
-		});
-	} catch (err) {
-		console.log("there was an error during registration, message:", err);
-		if (err.code === "ER_DUP_ENTRY") {
-			res.status(400).json({ message: "Email already exists" });
-		} else {
-			res.status(500).json({ message: "Server error when creating user" });
-		}
-	}
+    // Hasha lösenordet
+    const hashed = await hashPassword(password);
+
+    // Lägg till användaren i databasen
+    const [result] = await db.query(
+      "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+      [name, email, hashed]
+    );
+
+    const userId = result.insertId;
+
+    // Skapa JWT-token
+    const token = jwt.sign(
+      { userId, email },
+      process.env.JWT_SECRET || "fallback_secret",
+      { expiresIn: "24h" }
+    );
+
+    // Returnera token + användarinfo
+    res.status(201).json({
+      message: "User created successfully",
+      token,
+      user: {
+        id: userId,
+        name,
+        email
+      }
+    });
+
+  } catch (err) {
+    console.log("there was an error during registration:", err);
+    if (err.code === "ER_DUP_ENTRY") {
+      res.status(400).json({ message: "Email already exists" });
+    } else {
+      res.status(500).json({ message: "Server error when creating user" });
+    }
+  }
 }
+
 
 export async function loginUser(req, res) {
   try {
