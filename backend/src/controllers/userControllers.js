@@ -1,7 +1,8 @@
 import db from "../database/db.js";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
+import { hashPassword } from "../util/hash.js";
 export async function getAllUsers(req, res) {
         try {
                 const [result] = await db.query(
@@ -13,6 +14,54 @@ export async function getAllUsers(req, res) {
                 res.status(500).json({ message: "Server error when retrieving all users" });
         }
 }
+
+export async function addUser(req, res) {
+  try {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "missing fields" });
+    }
+
+    // Hasha lösenordet
+    const hashed = await hashPassword(password);
+
+    // Lägg till användaren i databasen
+    const [result] = await db.query(
+      "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+      [name, email, hashed]
+    );
+
+    const userId = result.insertId;
+
+    // Skapa JWT-token
+    const token = jwt.sign(
+      { userId, email },
+      process.env.JWT_SECRET || "fallback_secret",
+      { expiresIn: "24h" }
+    );
+
+    // Returnera token + användarinfo
+    res.status(201).json({
+      message: "User created successfully",
+      token,
+      user: {
+        id: userId,
+        name,
+        email
+      }
+    });
+
+  } catch (err) {
+    console.log("there was an error during registration:", err);
+    if (err.code === "ER_DUP_ENTRY") {
+      res.status(400).json({ message: "Email already exists" });
+    } else {
+      res.status(500).json({ message: "Server error when creating user" });
+    }
+  }
+}
+
 
 export async function loginUser(req, res) {
   try {
