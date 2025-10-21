@@ -1,47 +1,47 @@
-<script setup>
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
-</script>
-
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-    </div>
-  </header>
-
-  <main>
-    <TheWelcome />
-  </main>
+  <div id="app">
+    <!-- 
+      Header-sektionen med den stora färgade bubblan har tagits bort härifrån 
+      för att låta WelcomePage (som laddas i router-view) bestämma all layout och bakgrund.
+    -->
+    
+    <main>
+      <!-- Här laddas den aktuella routade komponenten (t.ex. WelcomePage) -->
+      <router-view></router-view>
+    </main>
+  </div>
 </template>
 
-<style scoped>
-header {
-  line-height: 1.5;
+<script>
+export default {
+  name: 'App'
+}
+</script>
+
+<style>
+/* Återställ standardmarginaler och paddningar */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
+/* Stilar för huvudcontainern för appen */
+#app {
+  /* Använd den typsnittsfamilj du vill ha */
+  font-family: 'Arial', sans-serif; 
+  min-height: 100vh;
+  /* Den lila/blå bakgrundsgradienten har tagits bort härifrån. 
+     Startsidan (WelcomePage) bestämmer nu bakgrunden. */
 }
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
+/* Stilar för body, se till att den fyller hela fönstret */
+body {  margin: 0;
+  min-height: 100vh;
+  /* Säkerställer att ingen global bakgrund ställer till problem */
+  background: none; 
 }
+
+/* Du kan ta bort alla oanvända .header-klasser, @keyframes, och @media queries 
+   som tidigare fanns här, eftersom de inte längre används efter att headern togs bort. */
 </style>
