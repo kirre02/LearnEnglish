@@ -3,6 +3,7 @@ import LoginForm from './components/LoginForm.vue'
 import Dashboard from './components/Dashboard.vue'
 import WelcomePage from './components/WelcomePage.vue'
 import Quiz from './components/Quiz.vue' // IMPORTERA QUIZ-KOMPONENTEN
+import Register from './pages/Register.vue'
 
 const routes = [
   {
@@ -18,7 +19,7 @@ const routes = [
   {
     path: '/register',
     name: 'Register', 
-    component: LoginForm
+    component: Register
   },
   {
     path: '/dashboard',
