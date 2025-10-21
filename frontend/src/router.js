@@ -4,6 +4,7 @@ import Dashboard from './components/Dashboard.vue'
 import WelcomePage from './components/WelcomePage.vue'
 import Quiz from './components/Quiz.vue'
 import PracticeLayout from './components/practice/PracticeLayout.vue' // IMPORTERA PRACTICE LAYOUT
+import Register from './pages/Register.vue'
 
 const routes = [
   {
@@ -13,13 +14,13 @@ const routes = [
   },
   {
     path: '/login',
-    name: 'Login', 
+    name: 'Login',
     component: LoginForm
   },
   {
     path: '/register',
-    name: 'Register', 
-    component: LoginForm
+    name: 'Register',
+    component: Register
   },
   {
     path: '/dashboard',
