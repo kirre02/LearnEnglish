@@ -145,6 +145,11 @@
           <span class="btn-emoji">🎯</span>
           <span>Quiz</span>
         </button>
+        <button class="action-btn results-btn" @click="goToResults">
+          <span class="btn-emoji">📊</span>
+          <span>Quizresultat</span>
+        </button>
+
       </div>
     </div>
 
@@ -220,7 +225,10 @@ export default {
     },
     startQuiz() {
       this.$router.push('/quiz');
-    }
+    },
+    goToResults() {
+      this.$router.push('/quiz-results');
+}
   }
 }
 </script>
@@ -698,4 +706,13 @@ export default {
     flex-direction: column;
     gap: 15px;
   }
+
+  .results-btn {
+  background: linear-gradient(135deg, #6a11cb, #2575fc); /* mavi-mor ton */
+}
+.results-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
 }</style>
