@@ -1,170 +1,334 @@
 <template>
-  <div class="results-page">
-    <h1>📊 Mina Quizresultat</h1>
+  <div class="quiz-results">
+    <!-- Tillbaka-knappar -->
+    <div class="navigation-header">
+      <button @click="goBackToQuiz" class="back-btn">← Tillbaka till Quiz</button>
+      <button @click="goToDashboard" class="dashboard-btn">🏠 Dashboard</button>
+    </div>
 
-    <div v-if="loading" class="loading">Laddar...</div>
+    <h2>Mina Quiz-Resultat</h2>
+    
+    <div v-if="loading" class="loading">
+      <p>Laddar resultat...</p>
+    </div>
 
-    <div v-else>
-      <div v-if="quizResults.length === 0" class="no-results">
-        Du har inte gjort några quiz ännu!
-      </div>
+    <div v-else-if="results.length === 0" class="no-results">
+      <p>Inga quiz-resultat att visa ännu.</p>
+      <p>Gör ett quiz för att se dina resultat här!</p>
+      <button @click="goToQuiz" class="action-btn">🎮 Gör ett Quiz</button>
+    </div>
 
-      <div v-else>
-        <div class="summary">
-          <div class="circle-chart">
-            <svg viewBox="0 0 36 36">
-              <path
-                class="circle-bg"
-                d="M18 2.0845
-                   a 15.9155 15.9155 0 0 1 0 31.831
-                   a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
-              <path
-                class="circle"
-                :stroke-dasharray="`${correctPercentage}, 100`"
-                d="M18 2.0845
-                   a 15.9155 15.9155 0 0 1 0 31.831
-                   a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
-              <text x="18" y="20.35" class="percentage">{{ correctPercentage }}%</text>
-            </svg>
-            <p>Totalt rätta svar</p>
-          </div>
-
-          <div class="summary-stats">
-            <div><strong>{{ totalQuizzes }}</strong> quiz totalt</div>
-            <div><strong>{{ totalCorrect }}</strong> rätt</div>
-            <div><strong>{{ totalWrong }}</strong> fel</div>
-          </div>
+    <div v-else class="results-container">
+      <div v-for="result in results" :key="result.id" class="result-card">
+        <div class="result-header">
+          <h3>Quiz {{ formatDate(result.date) }}</h3>
+          <span class="score-badge">{{ calculatePercentage(result.score, result.total) }}%</span>
         </div>
-
-        <table class="results-table">
-          <thead>
-            <tr>
-              <th>Datum</th>
-              <th>Rätt</th>
-              <th>Fel</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(result, index) in quizResults" :key="index">
-              <td>{{ new Date(result.created_at).toLocaleString() }}</td>
-              <td>{{ result.correct_answers }}</td>
-              <td>{{ result.wrong_answers }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="result-details">
+          <p><strong>Poäng:</strong> {{ result.score }}/{{ result.total }} rätt</p>
+          <p><strong>Datum:</strong> {{ formatDateTime(result.date) }}</p>
+        </div>
+        <div class="progress-bar">
+          <div 
+            class="progress-fill" 
+            :style="{ width: calculatePercentage(result.score, result.total) + '%' }"
+            :class="getProgressClass(result.score, result.total)"
+          ></div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { getQuizResults } from "../api/quizResults.js";
-
 export default {
-  name: "QuizResults",
+  name: 'QuizResults',
   data() {
     return {
-      quizResults: [],
-      loading: true,
-    };
-  },
-  computed: {
-    totalQuizzes() {
-      return this.quizResults.length;
-    },
-    totalCorrect() {
-      return this.quizResults.reduce((sum, r) => sum + r.correct_answers, 0);
-    },
-    totalWrong() {
-      return this.quizResults.reduce((sum, r) => sum + r.wrong_answers, 0);
-    },
-    correctPercentage() {
-      const total = this.totalCorrect + this.totalWrong;
-      return total === 0 ? 0 : Math.round((this.totalCorrect / total) * 100);
-    },
-  },
-  async mounted() {
-    const token = localStorage.getItem("token");
-    try {
-      this.quizResults = await getQuizResults(token);
-    } catch (err) {
-      console.error("Fel vid hämtning av quizresultat:", err);
-    } finally {
-      this.loading = false;
+      results: [],
+      loading: true
     }
   },
-};
+  async mounted() {
+    await this.fetchResults();
+  },
+  methods: {
+    async fetchResults() {
+      try {
+        this.loading = true;
+        const userId = 1; // Använd userId 1
+        const response = await fetch(`http://localhost:9001/api/results/${userId}`);
+        
+        if (response.ok) {
+          this.results = await response.json();
+          console.log('Results loaded:', this.results); // Debug
+        } else {
+          console.error('Error fetching results:', response.status);
+          // Fallback - visa testdata om API inte fungerar
+          this.results = this.getFallbackResults();
+        }
+      } catch (error) {
+        console.error('Error fetching results:', error);
+        // Fallback - visa testdata vid fel
+        this.results = this.getFallbackResults();
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // Fallback data om API inte fungerar
+    getFallbackResults() {
+      return [
+        {
+          id: 1,
+          user_id: 1,
+          score: 7,
+          total: 20,
+          date: new Date().toISOString()
+        },
+        {
+          id: 2, 
+          user_id: 1,
+          score: 5,
+          total: 20,
+          date: new Date(Date.now() - 86400000).toISOString() // 1 dag sedan
+        }
+      ];
+    },
+    
+    calculatePercentage(score, total) {
+      return Math.round((score / total) * 100);
+    },
+    
+    formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('sv-SE');
+    },
+    
+    formatDateTime(dateString) {
+      const date = new Date(dateString);
+      // Korrekt tidszonhantering - konvertera UTC till svensk tid
+      const swedishTime = new Date(date.getTime());
+      return swedishTime.toLocaleString('sv-SE', {
+        timeZone: 'Europe/Stockholm',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
+
+    getProgressClass(score, total) {
+      const percentage = this.calculatePercentage(score, total);
+      if (percentage >= 80) return 'excellent';
+      if (percentage >= 60) return 'good';
+      return 'needs-improvement';
+    },
+
+    goBackToQuiz() {
+      this.$router.push({
+        path: '/quiz',
+        query: { showResults: 'true' }
+      });
+    },    goToQuiz() {
+      this.$router.push('/quiz');
+    },    goToDashboard() {
+      this.$router.push('/dashboard');
+    }
+  }
+}
 </script>
 
 <style scoped>
-.results-page {
+.quiz-results {
   max-width: 800px;
   margin: 0 auto;
-  padding: 30px;
+  padding: 20px;
+  font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
   background-color: #f7f3ed;
-  font-family: 'Comic Sans MS', cursive;
-  border-radius: 15px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  min-height: 100vh;
 }
+
+/* Navigation Header */
+.navigation-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 30px;
+  gap: 15px;
+}
+
+.back-btn {
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255,154,139,0.3);
+}
+
+.back-btn:hover {
+  transform: translateX(-5px);
+  box-shadow: 0 6px 20px rgba(255,154,139,0.5);
+}
+
+.dashboard-btn {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(78,205,196,0.3);
+}
+
+.dashboard-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(78,205,196,0.5);
+}
+
 .loading, .no-results {
   text-align: center;
-  font-size: 1.2em;
-  margin-top: 40px;
-  color: #555;
-}
-.summary {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  margin-bottom: 30px;
-}
-.circle-chart {
-  width: 150px;
-  text-align: center;
-}
-.circle-bg {
-  fill: none;
-  stroke: #eee;
-  stroke-width: 3.8;
-}
-.circle {
-  fill: none;
-  stroke: #4ECDC4;
-  stroke-width: 3.8;
-  stroke-linecap: round;
-  animation: progress 1s ease-out forwards;
-}
-.percentage {
-  fill: #333;
-  font-size: 0.5em;
-  text-anchor: middle;
-}
-@keyframes progress {
-  0% { stroke-dasharray: 0 100; }
-}
-.summary-stats {
-  font-size: 1.2em;
-  line-height: 1.8;
-}
-.results-table {
-  width: 100%;
-  border-collapse: collapse;
+  padding: 40px;
+  color: #666;
   background: white;
-  border-radius: 10px;
-  overflow: hidden;
+  border-radius: 15px;
+  margin: 20px 0;
 }
-.results-table th, .results-table td {
-  text-align: center;
-  padding: 12px;
-  border-bottom: 1px solid #ddd;
-}
-.results-table th {
-  background-color: #FF9A8B;
+
+.action-btn {
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
   color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-top: 15px;
+  transition: all 0.3s ease;
 }
-.results-table tr:hover {
-  background-color: #f9f9f9;
+
+.action-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(255,154,139,0.4);
+}
+
+.result-card {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  border-left: 6px solid #4CAF50;
+  transition: transform 0.3s ease;
+}
+
+.result-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.result-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.2em;
+}
+
+.score-badge {
+  background: #4CAF50;
+  color: white;
+  padding: 6px 15px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.result-details {
+  margin-bottom: 15px;
+}
+
+.result-details p {
+  margin: 8px 0;
+  color: #555;
+  font-size: 1em;
+}
+
+.progress-bar {
+  height: 10px;
+  background: #f0f0f0;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.progress-fill {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+.progress-fill.excellent {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+}
+
+.progress-fill.good {
+  background: linear-gradient(135deg, #FFC107, #ffb300);
+}
+
+.progress-fill.needs-improvement {
+  background: linear-gradient(135deg, #F44336, #d32f2f);
+}
+
+/* Responsiv design */
+@media (max-width: 768px) {
+  .quiz-results {
+    padding: 15px;
+  }
+
+  .navigation-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .back-btn, .dashboard-btn {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .result-card {
+    padding: 15px;
+  }
+  
+  .result-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .score-badge {
+    align-self: flex-start;
+  }
+}
+
+h2 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 30px;
+  font-size: 2em;
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 </style>

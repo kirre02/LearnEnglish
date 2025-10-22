@@ -1,7 +1,7 @@
 import db from "../database/db.js";
 import jwt from "jsonwebtoken";
 
-// 🟢 1. Quiz sonucunu kaydet
+
 export async function saveQuizResult(req, res) {
   try {
     const authHeader = req.headers.authorization;
