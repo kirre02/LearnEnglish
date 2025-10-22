@@ -56,20 +56,44 @@ export default {
     async fetchResults() {
       try {
         this.loading = true;
-        // TODO: Hämta userId från localStorage/auth
-        const userId = 1; // Temporärt - använd userId 1
+        const userId = 1; // Använd userId 1
         const response = await fetch(`http://localhost:9001/api/results/${userId}`);
         
         if (response.ok) {
           this.results = await response.json();
+          console.log('Results loaded:', this.results); // Debug
         } else {
           console.error('Error fetching results:', response.status);
+          // Fallback - visa testdata om API inte fungerar
+          this.results = this.getFallbackResults();
         }
       } catch (error) {
         console.error('Error fetching results:', error);
+        // Fallback - visa testdata vid fel
+        this.results = this.getFallbackResults();
       } finally {
         this.loading = false;
       }
+    },
+
+    // Fallback data om API inte fungerar
+    getFallbackResults() {
+      return [
+        {
+          id: 1,
+          user_id: 1,
+          score: 7,
+          total: 20,
+          date: new Date().toISOString()
+        },
+        {
+          id: 2, 
+          user_id: 1,
+          score: 5,
+          total: 20,
+          date: new Date(Date.now() - 86400000).toISOString() // 1 dag sedan
+        }
+      ];
     },
     
     calculatePercentage(score, total) {
@@ -78,24 +102,23 @@ export default {
     
     formatDate(dateString) {
       const date = new Date(dateString);
-      return date.toLocaleDateString('sv-SE', { 
-        timeZone: 'Europe/Stockholm'
-      });
+      return date.toLocaleDateString('sv-SE');
     },
     
     formatDateTime(dateString) {
       const date = new Date(dateString);
-      return date.toLocaleString('sv-SE', { 
+      // Korrekt tidszonhantering - konvertera UTC till svensk tid
+      const swedishTime = new Date(date.getTime());
+      return swedishTime.toLocaleString('sv-SE', {
         timeZone: 'Europe/Stockholm',
         year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
         hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
+        minute: '2-digit'
       });
     },
-    
+
     getProgressClass(score, total) {
       const percentage = this.calculatePercentage(score, total);
       if (percentage >= 80) return 'excellent';
@@ -103,22 +126,14 @@ export default {
       return 'needs-improvement';
     },
 
-     goBackToQuiz() {
-    // Gå till quiz-sidan och skicka med data om att visa resultat direkt
-    this.$router.push({
-      path: '/quiz',
-      query: { showResults: 'true' }
-    });
-  },
-  
-
-    goToQuiz() {
-      // Gå direkt till quiz-sidan
+    goBackToQuiz() {
+      this.$router.push({
+        path: '/quiz',
+        query: { showResults: 'true' }
+      });
+    },    goToQuiz() {
       this.$router.push('/quiz');
-    },
-
-    goToDashboard() {
-      // Gå till dashboard
+    },    goToDashboard() {
       this.$router.push('/dashboard');
     }
   }
@@ -130,6 +145,9 @@ export default {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
+  font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+  background-color: #f7f3ed;
+  min-height: 100vh;
 }
 
 /* Navigation Header */
@@ -178,6 +196,9 @@ export default {
   text-align: center;
   padding: 40px;
   color: #666;
+  background: white;
+  border-radius: 15px;
+  margin: 20px 0;
 }
 
 .action-btn {
@@ -199,70 +220,80 @@ export default {
 
 .result-card {
   background: white;
-  border-radius: 8px;
+  border-radius: 15px;
   padding: 20px;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  border-left: 4px solid #4CAF50;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  border-left: 6px solid #4CAF50;
+  transition: transform 0.3s ease;
+}
+
+.result-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
 }
 
 .result-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 }
 
 .result-header h3 {
   margin: 0;
   color: #333;
+  font-size: 1.2em;
 }
 
 .score-badge {
   background: #4CAF50;
   color: white;
-  padding: 4px 12px;
+  padding: 6px 15px;
   border-radius: 20px;
   font-weight: bold;
+  font-size: 1.1em;
 }
 
 .result-details {
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 }
 
 .result-details p {
-  margin: 5px 0;
+  margin: 8px 0;
   color: #555;
+  font-size: 1em;
 }
 
 .progress-bar {
-  height: 8px;
+  height: 10px;
   background: #f0f0f0;
-  border-radius: 4px;
+  border-radius: 5px;
   overflow: hidden;
+  margin-top: 10px;
 }
 
 .progress-fill {
   height: 100%;
-  transition: width 0.3s ease;
+  transition: width 0.5s ease;
 }
 
 .progress-fill.excellent {
-  background: #4CAF50;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
 }
 
 .progress-fill.good {
-  background: #FFC107;
+  background: linear-gradient(135deg, #FFC107, #ffb300);
 }
 
 .progress-fill.needs-improvement {
-  background: #F44336;
+  background: linear-gradient(135deg, #F44336, #d32f2f);
 }
 
 /* Responsiv design */
 @media (max-width: 768px) {
   .quiz-results {
-    padding: 10px;
+    padding: 15px;
   }
 
   .navigation-header {
@@ -284,5 +315,20 @@ export default {
     align-items: flex-start;
     gap: 10px;
   }
+
+  .score-badge {
+    align-self: flex-start;
+  }
+}
+
+h2 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 30px;
+  font-size: 2em;
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 </style>

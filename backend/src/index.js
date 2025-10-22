@@ -1,12 +1,7 @@
-import express from "express";
-<<<<<<< HEAD
-import userRoutes from "./routes/userRoutes.js";
-import resultRoutes from "./routes/resultRoutes.js";  // <-- LÄGG TILL DENNA RAD!
-=======
->>>>>>> 5-audio-support
-import cors from "cors";
+import express from "express";import cors from "cors";
 import userRoutes from "./routes/userRoutes.js";
 import wordRoutes from "./routes/wordRoutes.js";
+import resultRoutes from "./routes/resultRoutes.js";  // Från gren 4
 
 const app = express();
 const PORT = 9001;
@@ -22,11 +17,9 @@ app.get("/hello", (req, res) => {
 });
 
 app.use("/api/users", userRoutes);
-<<<<<<< HEAD
-app.use("/api", resultRoutes);  // <-- LÄGG TILL DENNA RAD!
+app.use("/api/words", wordRoutes);  // Från gren 5
+app.use("/api", resultRoutes);      // Från gren 4
 
-=======
-app.use("/api/words", wordRoutes);
->>>>>>> 5-audio-support
 app.listen(PORT, () => {
-  console.log(`Server has started on port ${PORT}`);});
+  console.log(`Server has started on port ${PORT}`);
+});
