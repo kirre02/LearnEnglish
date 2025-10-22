@@ -3,12 +3,9 @@ import LoginForm from './components/LoginForm.vue'
 import Dashboard from './components/Dashboard.vue'
 import WelcomePage from './components/WelcomePage.vue'
 import Quiz from './components/Quiz.vue'
-<<<<<<< HEAD
-import QuizResults from './components/QuizResults.vue'  // <-- LÄGG TILL DENNA
-=======
-import PracticeLayout from './components/practice/PracticeLayout.vue' // IMPORTERA PRACTICE LAYOUT
-import Register from './pages/Register.vue'
->>>>>>> 5-audio-support
+import QuizResults from './components/QuizResults.vue'  // Från gren 4
+import PracticeLayout from './components/practice/PracticeLayout.vue' // Från gren 5
+import Register from './pages/Register.vue' // Från gren 5
 
 const routes = [
   {
@@ -29,31 +26,23 @@ const routes = [
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: Dashboard
-<<<<<<< HEAD
-  },  {
-=======
-  },
-  {
->>>>>>> 5-audio-support
+    component: Dashboard  },  {
     path: '/quiz',
     name: 'Quiz',
     component: Quiz
   },
-<<<<<<< HEAD
-  {  // <-- LÄGG TILL DENNA NYA ROUTE
+  {
+    // Från gren 4: Resultat-sida
     path: '/results',
     name: 'Results',
     component: QuizResults
-=======
+  },
   {
-    // LÄGG TILL DENNA NYA ROUTE FÖR ÖVNINGAR
+    // Från gren 5: Practice modes
     path: '/practice/:type',
     name: 'Practice',
     component: PracticeLayout,
-    props: true
->>>>>>> 5-audio-support
-  }
+    props: true  }
 ]
 
 const router = createRouter({
