@@ -337,8 +337,33 @@ export default {
     if (!this.isSpeechSupported) {
       console.log('Web Speech API är inte tillgängligt i denna webbläsare');
     }
+
+    this.fetchQuizQuestions();
+
   },
   methods: {
+
+    fetchQuizQuestions() {
+    fetch('http://localhost:9001/api/words')
+      .then(res => res.json())
+      .then(data => {
+        this.questions = data.map(word => {
+          const options = [word.swedish];
+          while (options.length < 4) {
+            const randomWord = data[Math.floor(Math.random() * data.length)].swedish;
+            if (!options.includes(randomWord)) options.push(randomWord);
+          }
+          return {
+            question: `Vad betyder '${word.english}' på svenska?`,
+            options: this.shuffleArray(options),
+            correctAnswer: word.swedish,
+            hint: `Tips: Glosan börjar på '${word.swedish[0]}'`
+          };
+        });
+      })
+      .catch(err => console.error("Fel vid hämtning av glosor för quiz:", err));
+  },
+
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
@@ -442,33 +467,6 @@ export default {
       this.$router.push('/dashboard');
     },
 
-
-    fetchQuizQuestions() {
-  fetch('http://localhost:9001/api/words') // ändrat
-    .then(res => res.json())
-    .then(data => {
-      this.questions = data.map(word => {
-        const options = [word.swedish];
-        while (options.length < 4) {
-          const randomWord = data[Math.floor(Math.random() * data.length)].swedish;
-          if (!options.includes(randomWord)) options.push(randomWord);
-        }
-        return {
-          question: `Vad betyder '${word.english}' på svenska?`,
-          options: this.shuffleArray(options),
-          correctAnswer: word.swedish,
-          hint: `Tips: Glosan börjar på '${word.swedish[0]}'`
-        };
-      });
-    })
-    .catch(err => console.error("Fel vid hämtning av glosor för quiz:", err));
-},
-    shuffleArray(array) {
-      return array.sort(() => Math.random() - 0.5);
-    }
-  },
-  mounted() {
-    this.fetchQuizQuestions();
 
     // Gå till resultat-sida (från gren 4)
     goToAllResults() {
