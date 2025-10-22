@@ -217,7 +217,6 @@ export default {
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(255,154,139,0.4);
 }
-
 .result-card {
   background: white;
   border-radius: 15px;
