@@ -51,6 +51,10 @@
         <div class="bubble-content">
           <h3>Quiz-mästare!</h3>
           <p>{{ completedQuizzes }} quiz avklarade</p>
+           <button class="action-btn results-btn" @click="goToResults">
+          <span class="btn-emoji">📊</span>
+          <span>Visa resultat</span>
+        </button>
         </div>
       </div>
     </div>
@@ -145,11 +149,6 @@
           <span class="btn-emoji">🎯</span>
           <span>Quiz</span>
         </button>
-        <button class="action-btn results-btn" @click="goToResults">
-          <span class="btn-emoji">📊</span>
-          <span>Quizresultat</span>
-        </button>
-
       </div>
     </div>
 
@@ -410,6 +409,25 @@ export default {
   border: 3px solid #4ECDC4;
 }
 
+.progress-bubble .results-btn {
+  margin-top: 10px;
+  padding: 10px 20px;
+  font-size: 0.9em;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color: white;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.progress-bubble .results-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 18px rgba(102, 126, 234, 0.4);
+}
+
+
 .quiz-bubble {
   border: 3px solid #FF9A8B;
 }
@@ -619,6 +637,28 @@ export default {
   font-size: 1.5em;
 }
 
+.results-btn {
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color: white;
+  border: none;
+  padding: 20px 15px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: bold;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+}
+
+.results-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+}
+
 /* Uppmuntrande footer */
 .encouragement-footer {
   text-align: center;
@@ -706,13 +746,7 @@ export default {
     flex-direction: column;
     gap: 15px;
   }
-
-  .results-btn {
-  background: linear-gradient(135deg, #6a11cb, #2575fc); /* mavi-mor ton */
-}
-.results-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-}
-
+    .results-btn {
+    background: linear-gradient(135deg, #ff6a88, #ff99ac); /* pembe ton */
+  }
 }</style>
