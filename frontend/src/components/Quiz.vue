@@ -1,5 +1,6 @@
 <template>
-  <div class="quiz-page-container">    <div class="quiz-container">
+  <div class="quiz-page-container">
+    <div class="quiz-container">
       <div class="quiz-header">
         <button @click="goBack" class="back-btn">← Tillbaka</button>
         <div class="quiz-progress">
@@ -7,9 +8,10 @@
           <div class="progress-bar">
             <div class="progress-fill" :style="progressBarStyle"></div>
           </div>
-        </div>      </div>
+        </div>
+      </div>
 
-    <div v-if="!quizFinished" class="quiz-content">
+      <div v-if="!quizFinished" class="quiz-content">
         <div class="question-bubble">
           <div class="question-header">
             <div class="question-emoji">🧠</div>
@@ -17,7 +19,8 @@
           <h2>{{ currentQuestion.question }}</h2>
           <div class="question-hint" v-if="currentQuestion.hint">
             💡 {{ currentQuestion.hint }}
-          </div>        </div>
+          </div>
+        </div>
 
         <div class="options-container">
           <button
@@ -39,8 +42,9 @@
               <span v-if="currentLoadingOption === option">⏳</span>
               <span v-else>🔊</span>
             </button>
-          </button>        </div>
-      <div v-if="answered" class="feedback-bubble" :class="feedbackClass">
+          </button>
+        </div>
+        <div v-if="answered" class="feedback-bubble" :class="feedbackClass">
           <div class="feedback-emoji">{{ feedbackEmoji }}</div>
           <div class="feedback-text">{{ feedbackText }}</div>
           <button
@@ -52,9 +56,16 @@
             <span v-if="audioLoading && currentLoadingOption === 'correct-answer'">⏳ Laddar...</span>
             <span v-else>🔊 Hör rätt svar</span>
           </button>
-          <button @click="nextQuestion" class="next-btn">
+          
+          <button 
+            @click="nextQuestion" 
+            class="next-btn"
+            ref="nextButton"
+            @keydown.enter.space="nextQuestion"
+            tabindex="0">
             {{ isLastQuestion ? 'Se resultat' : 'Nästa fråga' }} →
           </button>
+          
         </div>
       </div>
 
@@ -228,7 +239,8 @@ export default {
         options: ["Small", "Big", "Tall", "Short"],
         correctAnswer: "Big",
         hint: "Motsatsen till liten",
-        audioText: "Big"      },
+        audioText: "Big"
+      },
       {
         question: "Vad betyder 'Lycklig' på engelska?",
         options: ["Sad", "Happy", "Angry", "Tired"],
@@ -250,7 +262,8 @@ export default {
       currentQuestionIndex: 0,
       answered: false,
       selectedAnswer: null,
-      quizFinished: false,      progress: {}, // För att lagra laddad progress
+      quizFinished: false,
+      progress: {}, // För att lagra laddad progress
       questions: shuffleArray(preparedQuestions),
       initialQuestions: initialQuestions,
       shuffleArray: shuffleArray,
@@ -259,7 +272,8 @@ export default {
       audioLoading: false,
       currentLoadingOption: null,
       currentAudio: null,
-      isSpeechSupported: 'speechSynthesis' in window    }
+      isSpeechSupported: 'speechSynthesis' in window
+    }
   },
   computed: {
     currentQuestion() {
@@ -309,16 +323,17 @@ export default {
     },
     isAnswerCorrect() {
       return this.selectedAnswer === this.currentQuestion.correctAnswer;
-    },  },
+    },
+  },
   mounted() {
     // Kolla om vi ska visa resultat direkt (när man kommer tillbaka från results-sidan)
-  if (this.$route.query.showResults === 'true') {
+    if (this.$route.query.showResults === 'true') {
       const savedState = localStorage.getItem('lastQuizState');
       if (savedState) {
         try {
           const quizState = JSON.parse(savedState);
           this.quizFinished = true;
-        this.score = quizState.score;
+          this.score = quizState.score;
           localStorage.removeItem('lastQuizState');
         } catch (e) {
           console.error("Kunde inte tolka sparad quiz-state:", e);
@@ -349,6 +364,7 @@ export default {
       if (option === this.selectedAnswer) return 'incorrect';
       return '';
     },
+    // UPPDATERAD METOD checkAnswer
     checkAnswer(selectedAnswer) {
       this.answered = true;
       this.selectedAnswer = selectedAnswer;
@@ -356,7 +372,38 @@ export default {
       if (selectedAnswer === this.currentQuestion.correctAnswer) {
         this.score++;
       }
+
+      // Auto-scroll till nästa knapp efter kort delay
+      this.$nextTick(() => {
+        setTimeout(() => {
+          this.scrollToNextButton();
+          this.focusNextButton();
+        }, 300);
+      });
     },
+
+    // NY METOD: Auto-scroll till nästa knapp
+    scrollToNextButton() {
+      const nextButton = this.$refs.nextButton;
+      if (nextButton) {
+        nextButton.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }
+    },
+
+    // NY METOD: Fokus-hantering
+    focusNextButton() {
+      this.$nextTick(() => {
+        const nextButton = this.$refs.nextButton;
+        if (nextButton) {
+          nextButton.focus();
+        }
+      });
+    },
+
+    // UPPDATERAD METOD nextQuestion
     nextQuestion() {
       if (this.isLastQuestion) {
         this.finishQuiz();
@@ -364,6 +411,14 @@ export default {
         this.currentQuestionIndex++;
         this.answered = false;
         this.selectedAnswer = null;
+        
+        // Scroll till toppen av nästa fråga
+        this.$nextTick(() => {
+          const questionElement = document.querySelector('.question-bubble');
+          if (questionElement) {
+            questionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
       }
     },
     finishQuiz() {
@@ -742,6 +797,7 @@ export default {
   opacity: 0.6;
 }
 
+/* UPPDATERAD CSS FÖR next-btn */
 .next-btn {
   background: white;
   color: #333;
@@ -752,12 +808,20 @@ export default {
   font-weight: bold;
   font-size: 1em;
   transition: all 0.3s ease;
+  /* Lägg till fokus-styling för tillgänglighet */
+  outline: none;
+}
+
+.next-btn:focus {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
 }
 
 .next-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
+
 .results-bubble {
   padding: 40px;
   border-radius: 25px;
