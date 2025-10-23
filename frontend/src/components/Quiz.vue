@@ -22,7 +22,12 @@
           </div>
         </div>
 
-        <div class="options-container">
+        <div 
+          class="options-container"
+          @mousemove="handleMouseMove"
+          ref="optionsContainer"
+          @mouseleave="stopAutoScroll"
+        >
           <button
             v-for="(option, index) in currentQuestion.options"
             :key="index"
@@ -263,7 +268,7 @@ export default {
       answered: false,
       selectedAnswer: null,
       quizFinished: false,
-      progress: {}, // För att lagra laddad progress
+      progress: {}, 
       questions: shuffleArray(preparedQuestions),
       initialQuestions: initialQuestions,
       shuffleArray: shuffleArray,
@@ -272,7 +277,13 @@ export default {
       audioLoading: false,
       currentLoadingOption: null,
       currentAudio: null,
-      isSpeechSupported: 'speechSynthesis' in window
+      isSpeechSupported: 'speechSynthesis' in window,
+      
+      // NY DATA FÖR AUTO-SCROLL
+      autoScrollSpeed: 4, // Pixlar per frame
+      isAutoScrolling: false,
+      scrollAnimation: null,
+      scrollSpeed: 0, 
     }
   },
   computed: {
@@ -326,7 +337,7 @@ export default {
     },
   },
   mounted() {
-    // Kolla om vi ska visa resultat direkt (när man kommer tillbaka från results-sidan)
+    // Kolla om vi ska visa resultat direkt
     if (this.$route.query.showResults === 'true') {
       const savedState = localStorage.getItem('lastQuizState');
       if (savedState) {
@@ -339,7 +350,6 @@ export default {
           console.error("Kunde inte tolka sparad quiz-state:", e);
         }
       }
-      // Ta bort query-parametern så den inte finns kvar vid refresh
       this.$router.replace({ query: {} });
     }
 
@@ -348,12 +358,102 @@ export default {
     }
     this.loadProgress();
     
-    // Logga om ljudstöd saknas
     if (!this.isSpeechSupported) {
       console.log('Web Speech API är inte tillgängligt i denna webbläsare');
     }
   },
   methods: {
+    // UPPDATERAD METOD: Använder window.innerHeight för scroll-zoner
+    handleMouseMove(event) {
+      if (this.answered || this.quizFinished) {
+        this.stopAutoScroll();
+        return;
+      }
+      
+      const container = this.$refs.optionsContainer;
+      if (!container) return;
+      
+      const mouseY = event.clientY;
+      
+      // Bestäm scroll-områden (övre och nedre 15% av fönstret)
+      const scrollZoneHeight = window.innerHeight * 0.15;
+      const topZone = scrollZoneHeight; // Övre 15% av fönstret
+      const bottomZone = window.innerHeight - scrollZoneHeight; // Nedre 15% av fönstret
+      
+      let newScrollSpeed = 0;
+      
+      if (mouseY < topZone) {
+        // Scroll uppåt - musen i övre kanten
+        newScrollSpeed = -this.autoScrollSpeed;
+      } else if (mouseY > bottomZone) {
+        // Scroll nedåt - musen i nedre kanten
+        newScrollSpeed = this.autoScrollSpeed;
+      }
+
+      // Om scrollhastigheten har ändrats, hantera start/stop
+      if (newScrollSpeed !== 0 && !this.isAutoScrolling) {
+        this.startAutoScroll(newScrollSpeed);
+        this.setScrollVisualFeedback(newScrollSpeed < 0 ? 'top' : 'bottom');
+      } else if (newScrollSpeed === 0 && this.isAutoScrolling) {
+        this.stopAutoScroll();
+      } else if (this.isAutoScrolling && this.scrollSpeed !== newScrollSpeed) {
+        // Justera riktningen om musen rör sig mellan zonerna
+        this.stopAutoScroll(); // Stoppar och rensar gammal animation
+        this.startAutoScroll(newScrollSpeed);
+        this.setScrollVisualFeedback(newScrollSpeed < 0 ? 'top' : 'bottom');
+      }
+    },
+    
+    // UPPDATERAD METOD: Starta auto-scroll
+    startAutoScroll(speed) {
+      this.isAutoScrolling = true;
+      this.scrollSpeed = speed;
+
+      const scroll = () => {
+        if (!this.isAutoScrolling) return;
+        
+        // Scrolla hela fönstret
+        window.scrollBy(0, speed);
+        
+        // Fortsätt scrolla så länge musen är i zonen
+        this.scrollAnimation = requestAnimationFrame(scroll);
+      };
+      
+      // Stoppa eventuella gamla animationer innan den nya startar
+      if (this.scrollAnimation) {
+        cancelAnimationFrame(this.scrollAnimation);
+      }
+      this.scrollAnimation = requestAnimationFrame(scroll);
+    },
+    
+    // NY METOD: Hantera visuell feedback (box-shadow/klass)
+    setScrollVisualFeedback(direction) {
+      const container = this.$refs.optionsContainer;
+      if (!container) return;
+      
+      // Ta bort tidigare klasser
+      container.classList.remove('scroll-top', 'scroll-bottom');
+      
+      // Lägg till ny klass baserat på riktning
+      if (direction === 'top') {
+        container.classList.add('scroll-top');
+      } else if (direction === 'bottom') {
+        container.classList.add('scroll-bottom');
+      }
+      // Annars tas klasserna bort av remove ovan.
+    },
+    
+    // UPPDATERAD METOD: Stoppa auto-scroll
+    stopAutoScroll() {
+      this.isAutoScrolling = false;
+      this.scrollSpeed = 0;
+      this.setScrollVisualFeedback('none'); // Tar bort visuell feedback
+      if (this.scrollAnimation) {
+        cancelAnimationFrame(this.scrollAnimation);
+        this.scrollAnimation = null;
+      }
+    },
+
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
@@ -364,8 +464,9 @@ export default {
       if (option === this.selectedAnswer) return 'incorrect';
       return '';
     },
-    // UPPDATERAD METOD checkAnswer
+    // UPPDATERAD METOD: Stoppa auto-scroll när svar väljs
     checkAnswer(selectedAnswer) {
+      this.stopAutoScroll(); 
       this.answered = true;
       this.selectedAnswer = selectedAnswer;
 
@@ -403,8 +504,9 @@ export default {
       });
     },
 
-    // UPPDATERAD METOD nextQuestion
+    // UPPDATERAD METOD: Stoppa auto-scroll vid nästa fråga
     nextQuestion() {
+      this.stopAutoScroll();
       if (this.isLastQuestion) {
         this.finishQuiz();
       } else {
@@ -427,7 +529,6 @@ export default {
       this.saveQuizResult();
       this.saveQuizStateForResults(); // Spara state när quizet är avslutat
     },
-    // NY METOD: Spara quiz-state för återanvändning (från gren 4)
     saveQuizStateForResults() {
       const quizState = {
         score: this.score,
@@ -569,7 +670,9 @@ export default {
     },
   },
 
+  // UPPDATERAD LIFECYCLE-HOOK: Stoppa auto-scroll när komponenten förstörs
   beforeUnmount() {
+    this.stopAutoScroll();
     if (this.isSpeechSupported) {
       speechSynthesis.cancel();
     }
@@ -578,7 +681,7 @@ export default {
 </script>
 
 <style scoped>
-/* Samma CSS som tidigare - inga ändringar behövs */
+/* Samma CSS som tidigare - med tillägg för auto-scroll */
 .quiz-page-container {
   min-height: 100vh;
   background-color: #f7f3ed;
@@ -675,10 +778,15 @@ export default {
   font-size: 0.9em;
   margin-top: 15px;
 }
+
+/* UPPDATERAD CSS FÖR options-container */
 .options-container {
   display: grid;
   gap: 15px;
   margin-bottom: 30px;
+  position: relative;
+  min-height: 400px; /* Mer utrymme för scrollning */
+  transition: all 0.3s ease;
 }
 
 .option-btn {
@@ -902,6 +1010,54 @@ export default {
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(0,0,0,0.3);
 }
+
+/* --- UPPDATERAD CSS FÖR AUTO-SCROLL FEEDBACK --- */
+
+/* Visuell feedback (Box Shadow på container) */
+.options-container.scroll-top {
+  box-shadow: inset 0 10px 20px -10px rgba(255, 107, 107, 0.5); /* Röd/Orange skugga uppåt */
+}
+
+.options-container.scroll-bottom {
+  box-shadow: inset 0 -10px 20px -10px rgba(78, 205, 196, 0.5); /* Grön/Turkos skugga nedåt */
+}
+
+/* Gradient overlay för att visa scroll-zoner (Fixed position för fönsterbaserad scroll) */
+.options-container::before,
+.options-container::after {
+  content: '';
+  position: fixed; /* Fixed för att följa fönstret! */
+  left: 0;
+  right: 0;
+  height: 20%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10; /* Se till att den ligger över annat innehåll */
+}
+
+.options-container::before {
+  top: 0;
+  background: linear-gradient(to bottom, 
+    rgba(255, 107, 107, 0.2) 0%, 
+    transparent 100%);
+}
+
+.options-container::after {
+  bottom: 0;
+  background: linear-gradient(to top, 
+    rgba(78, 205, 196, 0.2) 0%, 
+    transparent 100%);
+}
+
+.options-container.scroll-top::before {
+  opacity: 1;
+}
+.options-container.scroll-bottom::after {
+  opacity: 1;
+}
+
+/* Animationer */
 @keyframes slideUp {
   0% { transform: translateY(20px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
