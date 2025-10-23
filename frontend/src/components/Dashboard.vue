@@ -128,13 +128,7 @@
           <h3>Familj</h3>
           <p>Mamma, pappa & alla andra</p>
           <div class="card-sparkle">✨</div>
-        </div>        <div class="explore-card card-quiz" @click="startQuiz">
-          <div class="card-emoji">🧠</div>
-          <div class="card-wave"></div>
-          <h3>Quiz</h3>
-          <p>Testa dina kunskaper</p>
-          <div class="card-sparkle">✨</div>
-        </div>
+        </div>        
       </div>
     </div>    <div class="encouragement-footer">
       <div class="encouragement-message">
