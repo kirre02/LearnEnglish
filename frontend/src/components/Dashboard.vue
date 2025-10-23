@@ -1,6 +1,4 @@
-<template>
-  <div class="dashboard">
-    <!-- Toppsektion med bubbeltegel och ballonger -->
+<template>  <div class="dashboard">
     <div class="top-section">
       <div class="floating-balloons">
         <div class="balloon balloon1">🎈</div>
@@ -30,10 +28,7 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Framstegs-bubblor -->
-    <div class="progress-bubbles">
+    </div>    <div class="progress-bubbles">
       <div class="progress-bubble progress-main">
         <div class="bubble-emoji">🚀</div>
         <div class="bubble-content">
@@ -55,7 +50,31 @@
       </div>
     </div>
 
-    <!-- Huvudsektion - Vad vill du utforska idag? -->
+    <div class="quick-actions">
+      <div class="actions-header">
+        <h3>Snabbstart ⚡</h3>
+        <div class="action-sparkles">🌟⚡🌟</div>
+      </div>
+      <div class="action-buttons">
+        <button class="action-btn listen-btn" @click="startQuickPractice('listen')">
+          <span class="btn-emoji">🎧</span>
+          <span>Lyssna</span>
+        </button>
+        <button class="action-btn match-btn" @click="startQuickPractice('match')">
+          <span class="btn-emoji">🔄</span>
+          <span>Matcha</span>
+        </button>
+        <button class="action-btn speak-btn" @click="startQuickPractice('speak')">
+          <span class="btn-emoji">🎤</span>
+          <span>Upprepa</span>
+        </button>
+        <button class="action-btn quiz-btn" @click="startQuiz">
+          <span class="btn-emoji">🎯</span>
+          <span>Quiz</span>
+        </button>
+      </div>
+    </div>
+
     <div class="explore-section">
       <div class="section-header">
         <h2>Vad vill du utforska idag? 🗺️</h2>
@@ -109,10 +128,7 @@
           <h3>Familj</h3>
           <p>Mamma, pappa & alla andra</p>
           <div class="card-sparkle">✨</div>
-        </div>
-
-        <!-- NYTT QUIZ-KORT -->
-        <div class="explore-card card-quiz" @click="startQuiz">
+        </div>        <div class="explore-card card-quiz" @click="startQuiz">
           <div class="card-emoji">🧠</div>
           <div class="card-wave"></div>
           <h3>Quiz</h3>
@@ -120,36 +136,7 @@
           <div class="card-sparkle">✨</div>
         </div>
       </div>
-    </div>
-
-    <!-- Snabbknappar -->
-    <div class="quick-actions">
-      <div class="actions-header">
-        <h3>Snabbstart ⚡</h3>
-        <div class="action-sparkles">🌟⚡🌟</div>
-      </div>
-      <div class="action-buttons">
-        <button class="action-btn listen-btn" @click="startQuickPractice('listen')">
-          <span class="btn-emoji">🎧</span>
-          <span>Lyssna</span>
-        </button>
-        <button class="action-btn match-btn" @click="startQuickPractice('match')">
-          <span class="btn-emoji">🔄</span>
-          <span>Matcha</span>
-        </button>
-        <button class="action-btn speak-btn" @click="startQuickPractice('speak')">
-          <span class="btn-emoji">🎤</span>
-          <span>Upprepa</span>
-        </button>
-        <button class="action-btn quiz-btn" @click="startQuiz">
-          <span class="btn-emoji">🎯</span>
-          <span>Quiz</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Uppmuntrande avslutning -->
-    <div class="encouragement-footer">
+    </div>    <div class="encouragement-footer">
       <div class="encouragement-message">
         <div class="message-emoji">💫</div>
         <div class="message-text">
@@ -189,37 +176,38 @@ export default {
     this.loadProgress();
   },
   methods: {
-  loadProgress() {
-    const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
-    this.learnedWords = progress.learnedWords || 0;
-    this.completedQuizzes = progress.completedQuizzes || 0;
-  },
-  saveProgress() {
-    const progress = {
-      learnedWords: this.learnedWords,
-      completedQuizzes: this.completedQuizzes
-    };
-    localStorage.setItem('learningProgress', JSON.stringify(progress));
-  },
-  handleLogout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    this.$router.push('/');
-  },
-  navigateToSection(section) {
-    alert(`Öppnar ${section} - kommer snart!`);
-  },
-  startQuickPractice(type) {
-    this.$router.push(`/practice/${type}`);
-  },
-  startQuiz() {
-    this.$router.push('/quiz');
+    loadProgress() {
+      const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
+      this.learnedWords = progress.learnedWords || 0;
+      this.completedQuizzes = progress.completedQuizzes || 0;
+    },
+    saveProgress() {
+      const progress = {
+        learnedWords: this.learnedWords,
+        completedQuizzes: this.completedQuizzes
+      };
+      localStorage.setItem('learningProgress', JSON.stringify(progress));
+    },
+    handleLogout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      this.$router.push('/');
+    },
+    navigateToSection(section) {
+      alert(`Öppnar ${section} - kommer snart!`);
+    },
+    startQuickPractice(type) {
+      this.$router.push(`/practice/${type}`);
+    },
+    startQuiz() {
+      this.$router.push('/quiz');
+    }
   }
-}
 }
 </script>
 
 <style scoped>
+/* Din CSS-kod är oförändrad */
 .dashboard {
   max-width: 1200px;
   margin: 0 auto;
@@ -692,4 +680,5 @@ export default {
     flex-direction: column;
     gap: 15px;
   }
-}</style>
+}
+</style>
