@@ -342,28 +342,7 @@ export default {
 
   },
   methods: {
-
-    fetchQuizQuestions() {
-    fetch('http://localhost:9001/api/words')
-      .then(res => res.json())
-      .then(data => {
-        this.questions = data.map(word => {
-          const options = [word.swedish];
-          while (options.length < 4) {
-            const randomWord = data[Math.floor(Math.random() * data.length)].swedish;
-            if (!options.includes(randomWord)) options.push(randomWord);
-          }
-          return {
-            question: `Vad betyder '${word.english}' på svenska?`,
-            options: this.shuffleArray(options),
-            correctAnswer: word.swedish,
-            hint: `Tips: Glosan börjar på '${word.swedish[0]}'`
-          };
-        });
-      })
-      .catch(err => console.error("Fel vid hämtning av glosor för quiz:", err));
-  },
-
+    
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
