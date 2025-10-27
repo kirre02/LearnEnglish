@@ -1,6 +1,6 @@
 <template>
-  <div class="quiz-page-container">    <div class="quiz-container">
-      <div class="quiz-header">
+  <div class="familj-page-container">    <div class="familj-container">
+      <div class="familj-header">
         <button @click="goBack" class="back-btn">← Tillbaka</button>
         <div class="quiz-progress">
           <span class="progress-text">Fråga {{ currentQuestionIndex + 1 }} av {{ questions.length }}</span>
@@ -9,7 +9,7 @@
           </div>
         </div>      </div>
 
-    <div v-if="!quizFinished" class="quiz-content">
+    <div v-if="!quizFinished" class="familj-content">
         <div class="question-bubble">
           <div class="question-header">
             <div class="question-emoji">🧠</div>
