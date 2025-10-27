@@ -97,6 +97,7 @@
             </div>
           </div>
 
+          <!-- Feedback med auto-focus funktioner -->
           <div v-if="showFeedback && !currentWord.completed" class="feedback-section">
             <div class="feedback-bubble" :class="feedbackClass">
               <div class="feedback-emoji">{{ feedbackEmoji }}</div>
@@ -105,10 +106,20 @@
                 <button 
                   v-if="!recognitionSuccess"
                   @click="tryAgain" 
-                  class="action-btn try-again-btn">
+                  class="action-btn try-again-btn"
+                  ref="tryAgainButton"
+                  @keydown.enter="tryAgain"
+                  @keydown.space="tryAgain"
+                  tabindex="0">
                   🔄 Försök igen
                 </button>
-                <button @click="nextWord" class="action-btn next-btn">
+                <button 
+                  @click="nextWord" 
+                  class="action-btn next-btn"
+                  ref="nextButton"
+                  @keydown.enter="nextWord"
+                  @keydown.space="nextWord"
+                  tabindex="0">
                   {{ isLastWord ? 'Avsluta övning' : 'Nästa ord' }} →
                 </button>
               </div>
@@ -116,18 +127,27 @@
           </div>
         </div>
 
+        <!-- Navigation controls med auto-focus -->
         <div v-if="currentWord.completed" class="navigation-controls">
           <div class="nav-buttons">
             <button 
               @click="goToPreviousWord" 
               class="nav-btn prev-btn"
               :disabled="currentWordIndex === 0"
+              ref="prevButton"
+              @keydown.enter="goToPreviousWord"
+              @keydown.space="goToPreviousWord"
+              tabindex="0"
             >
               ← Föregående ord
             </button>
             <button 
               @click="nextWord" 
               class="nav-btn next-btn"
+              ref="nextNavButton"
+              @keydown.enter="nextWord"
+              @keydown.space="nextWord"
+              tabindex="0"
             >
               {{ isLastWord ? 'Avsluta' : 'Nästa ord' }} →
             </button>
@@ -135,13 +155,23 @@
               v-if="isLastWord" 
               @click="finishPractice" 
               class="nav-btn finish-btn"
+              ref="finishButton"
+              @keydown.enter="finishPractice"
+              @keydown.space="finishPractice"
+              tabindex="0"
             >
               🏁 Avsluta övning
             </button>
           </div>
         </div>
 
-        <div class="tips-section">
+        <!-- Tips section med auto-scroll -->
+        <div 
+          class="tips-section"
+          @mousemove="handleMouseMove"
+          ref="tipsContainer"
+          @mouseleave="stopAutoScroll"
+        >
           <div class="tip-bubble">
             <div class="tip-emoji">💡</div>
             <div class="tip-content">
@@ -173,7 +203,8 @@
 <script>
 export default {
   name: 'SpeakPractice',
-  data() {    return {
+  data() {    
+    return {
       currentWordIndex: 0,
       audioLoading: false,
       recognitionLoading: false,
@@ -192,7 +223,13 @@ export default {
       recognition: null,
       mediaRecorder: null,
       audioChunks: [],
-      isSpeechSupported: 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window
+      isSpeechSupported: 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window,
+      
+      // DATA FÖR AUTO-SCROLL
+      autoScrollSpeed: 4,
+      isAutoScrolling: false,
+      scrollAnimation: null,
+      scrollSpeed: 0,
     }
   },
   computed: {
@@ -298,6 +335,122 @@ export default {
       console.log('Använder fallback-ord för uttalsövning');
     },
 
+    // AUTO-SCROLL METODER
+    handleMouseMove(event) {
+      if (this.currentWord.completed || this.showFeedback) {
+        this.stopAutoScroll();
+        return;
+      }
+      
+      const container = this.$refs.tipsContainer;
+      if (!container) return;
+      
+      const mouseY = event.clientY;
+      const scrollZoneHeight = window.innerHeight * 0.15;
+      const topZone = scrollZoneHeight;
+      const bottomZone = window.innerHeight - scrollZoneHeight;
+      
+      let newScrollSpeed = 0;
+      
+      if (mouseY < topZone) { 
+        newScrollSpeed = -this.autoScrollSpeed;
+      } else if (mouseY > bottomZone) { 
+        newScrollSpeed = this.autoScrollSpeed;
+      } 
+      
+      if (newScrollSpeed !== 0 && !this.isAutoScrolling) {
+        this.startAutoScroll(newScrollSpeed);
+        this.setScrollVisualFeedback(newScrollSpeed < 0 ? 'top' : 'bottom');
+      } else if (newScrollSpeed === 0 && this.isAutoScrolling) {
+        this.stopAutoScroll();
+      } else if (this.isAutoScrolling && this.scrollSpeed !== newScrollSpeed) {
+        this.stopAutoScroll();
+        this.startAutoScroll(newScrollSpeed);
+        this.setScrollVisualFeedback(newScrollSpeed < 0 ? 'top' : 'bottom');
+      }
+    },
+
+    startAutoScroll(speed) {
+      this.isAutoScrolling = true;
+      this.scrollSpeed = speed;
+
+      const scroll = () => {
+        if (!this.isAutoScrolling) return;
+        window.scrollBy(0, speed);
+        this.scrollAnimation = requestAnimationFrame(scroll);
+      };
+      
+      if (this.scrollAnimation) {
+        cancelAnimationFrame(this.scrollAnimation);
+      }
+      this.scrollAnimation = requestAnimationFrame(scroll);
+    },
+
+    setScrollVisualFeedback(direction) {
+      const container = this.$refs.tipsContainer;
+      if (!container) return;
+      container.classList.remove('scroll-top', 'scroll-bottom'); 
+      if (direction === 'top') {
+        container.classList.add('scroll-top');
+      } else if (direction === 'bottom') {
+        container.classList.add('scroll-bottom');
+      } 
+    },
+
+    stopAutoScroll() {
+      this.isAutoScrolling = false;
+      this.scrollSpeed = 0;
+      this.setScrollVisualFeedback('none');
+      if (this.scrollAnimation) {
+        cancelAnimationFrame(this.scrollAnimation);
+        this.scrollAnimation = null;
+      }
+    },
+
+    // FOCUS METODER
+    focusNextButton() {
+      this.$nextTick(() => {
+        const nextButton = this.$refs.nextButton;
+        if (nextButton) {
+          nextButton.focus();
+        }
+      });
+    },
+
+    focusTryAgainButton() {
+      this.$nextTick(() => {
+        const tryAgainButton = this.$refs.tryAgainButton;
+        if (tryAgainButton) {
+          tryAgainButton.focus();
+        }
+      });
+    },
+
+    focusNavigationButton() {
+      this.$nextTick(() => {
+        let buttonToFocus = null;
+        
+        if (this.isLastWord) {
+          buttonToFocus = this.$refs.finishButton;
+        } else {
+          buttonToFocus = this.$refs.nextNavButton;
+        }
+        
+        if (buttonToFocus) {
+          buttonToFocus.focus();
+        }
+      });
+    },
+
+    scrollToElement(element) {
+      if (element) {
+        element.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }
+    },
+
     cancelPractice() {
       if (confirm('Vill du avbryta övningen? Ditt framsteg kommer att sparas.')) {
         this.saveProgress();
@@ -318,11 +471,17 @@ export default {
       if (this.currentWordIndex > 0) {
         this.currentWordIndex--;
         this.loadWordState();
+        
+        this.$nextTick(() => {
+          this.scrollToElement(document.querySelector('.word-section'));
+        });
       }
     },
 
     loadWordState() {
       this.stopRecognition();
+      this.stopAutoScroll();
+      
       const word = this.currentWord;
       
       this.hasAttempted = !!word.userAnswer || word.completed; 
@@ -465,6 +624,18 @@ export default {
             this.words[this.currentWordIndex].audioUrl = audioUrl;
             
             this.showFeedback = true;
+            
+            // Auto-focus på rätt knapp efter svar
+            this.$nextTick(() => {
+              setTimeout(() => {
+                if (isCorrect) {
+                  this.focusNextButton();
+                } else {
+                  this.focusTryAgainButton();
+                }
+                this.scrollToElement(document.querySelector('.feedback-section'));
+              }, 300);
+            });
           });
         };
         
@@ -484,6 +655,14 @@ export default {
             this.words[this.currentWordIndex].audioUrl = audioUrl;
             
             this.showFeedback = true;
+            
+            // Auto-focus på try again knapp vid fel
+            this.$nextTick(() => {
+              setTimeout(() => {
+                this.focusTryAgainButton();
+                this.scrollToElement(document.querySelector('.feedback-section'));
+              }, 300);
+            });
           });
         };
         
@@ -559,20 +738,30 @@ export default {
         this.words[this.currentWordIndex].userAnswer = '';
         this.words[this.currentWordIndex].audioUrl = null;
         this.hasAttempted = false;
+        
+        this.$nextTick(() => {
+          this.scrollToElement(document.querySelector('.recognition-controls'));
+        });
       }
     },
 
     nextWord() {
+      this.stopAutoScroll();
       if (this.isLastWord) {
         this.finishPractice();
       } else {
         this.currentWordIndex++;
         this.loadWordState();
+        
+        this.$nextTick(() => {
+          this.scrollToElement(document.querySelector('.word-section'));
+        });
       }
     },
 
     resetWordState() {
       this.stopRecognition();
+      this.stopAutoScroll();
       this.hasAttempted = false;
       this.recognitionSuccess = false;
       this.recognitionError = false;
@@ -583,6 +772,7 @@ export default {
     },
 
     finishPractice() {
+      this.stopAutoScroll();
       this.saveProgress();
       const correctWords = this.words.filter(w => w.success).length;
       alert(`Övning avslutad! 🎉\nDu fick ${correctWords} av ${this.words.length} ord rätt!\nTotalpoäng: ${this.score}`);
@@ -609,6 +799,7 @@ export default {
 
   beforeUnmount() {
     this.stopRecognition();
+    this.stopAutoScroll();
     this.words.forEach(word => {
       if (word.audioUrl) {
         URL.revokeObjectURL(word.audioUrl);
@@ -979,6 +1170,12 @@ export default {
   font-weight: bold;
   font-size: 0.9em;
   transition: all 0.3s ease;
+  outline: none;
+}
+
+.action-btn:focus {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
 }
 
 .try-again-btn {
@@ -1022,6 +1219,12 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+  outline: none;
+}
+
+.nav-btn:focus {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
 }
 
 .nav-btn:disabled {
@@ -1056,6 +1259,52 @@ export default {
   border-radius: 15px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.1);
   margin-top: 20px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+/* Auto-scroll CSS för tips-section */
+.tips-section.scroll-top {
+  box-shadow: inset 0 10px 20px -10px rgba(255, 107, 107, 0.5);
+}
+
+.tips-section.scroll-bottom {
+  box-shadow: inset 0 -10px 20px -10px rgba(78, 205, 196, 0.5);
+}
+
+.tips-section::before,
+.tips-section::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 20%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+.tips-section::before {
+  top: 0;
+  background: linear-gradient(to bottom, 
+    rgba(255, 107, 107, 0.2) 0%, 
+    transparent 100%);
+}
+
+.tips-section::after {
+  bottom: 0;
+  background: linear-gradient(to top, 
+    rgba(78, 205, 196, 0.2) 0%, 
+    transparent 100%);
+}
+
+.tips-section.scroll-top::before {
+  opacity: 1;
+}
+
+.tips-section.scroll-bottom::after {
+  opacity: 1;
 }
 
 .tip-bubble {
@@ -1153,6 +1402,10 @@ export default {
   
   .feedback-actions, .nav-buttons {
     flex-direction: column;
+  }
+  
+  .tips-section {
+    min-height: 200px;
   }
 }
 </style>

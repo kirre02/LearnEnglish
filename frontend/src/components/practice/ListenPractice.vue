@@ -32,7 +32,12 @@
           <p class="sub-instruction" v-if="!hasPlayedAudio">⏺️ Tryck på högtalaren för att börja</p>
         </div>
 
-        <div class="options-container">
+        <div 
+          class="options-container"
+          @mousemove="handleMouseMove"
+          ref="optionsContainer"
+          @mouseleave="stopAutoScroll"
+        >
           <button 
             v-for="(option, index) in currentQuestion.options" 
             :key="index"
@@ -49,7 +54,12 @@
           <div class="feedback-bubble" :class="feedbackClass">
             <div class="feedback-emoji">{{ feedbackEmoji }}</div>
             <div class="feedback-text">{{ feedbackText }}</div>
-            <button @click="nextQuestion" class="next-btn">
+            <button 
+              @click="nextQuestion" 
+              class="next-btn"
+              ref="nextButton"
+              @keydown.enter.space="nextQuestion"
+              tabindex="0">
               {{ isLastQuestion ? 'Avsluta övning' : 'Nästa fråga' }} →
             </button>
           </div>
@@ -72,7 +82,13 @@ export default {
       score: 0,
       questions: [],
       loading: true,
-      allWords: [] // Lagra alla ord från databasen
+      allWords: [], // Lagra alla ord från databasen
+      
+      // DATA FÖR AUTO-SCROLL
+      autoScrollSpeed: 4,
+      isAutoScrolling: false,
+      scrollAnimation: null,
+      scrollSpeed: 0,
     }
   },
   computed: {
@@ -277,16 +293,116 @@ export default {
       }
     },
 
+    // AUTO-SCROLL METODER
+    handleMouseMove(event) {
+      if (this.answered) {
+        this.stopAutoScroll();
+        return;
+      }
+      
+      const container = this.$refs.optionsContainer;
+      if (!container) return;
+      
+      const mouseY = event.clientY;
+      const scrollZoneHeight = window.innerHeight * 0.15;
+      const topZone = scrollZoneHeight;
+      const bottomZone = window.innerHeight - scrollZoneHeight;
+      
+      let newScrollSpeed = 0;
+      
+      if (mouseY < topZone) { 
+        newScrollSpeed = -this.autoScrollSpeed;
+      } else if (mouseY > bottomZone) { 
+        newScrollSpeed = this.autoScrollSpeed;
+      } 
+      
+      if (newScrollSpeed !== 0 && !this.isAutoScrolling) {
+        this.startAutoScroll(newScrollSpeed);
+        this.setScrollVisualFeedback(newScrollSpeed < 0 ? 'top' : 'bottom');
+      } else if (newScrollSpeed === 0 && this.isAutoScrolling) {
+        this.stopAutoScroll();
+      } else if (this.isAutoScrolling && this.scrollSpeed !== newScrollSpeed) {
+        this.stopAutoScroll();
+        this.startAutoScroll(newScrollSpeed);
+        this.setScrollVisualFeedback(newScrollSpeed < 0 ? 'top' : 'bottom');
+      }
+    },
+
+    startAutoScroll(speed) {
+      this.isAutoScrolling = true;
+      this.scrollSpeed = speed;
+
+      const scroll = () => {
+        if (!this.isAutoScrolling) return;
+        window.scrollBy(0, speed);
+        this.scrollAnimation = requestAnimationFrame(scroll);
+      };
+      
+      if (this.scrollAnimation) {
+        cancelAnimationFrame(this.scrollAnimation);
+      }
+      this.scrollAnimation = requestAnimationFrame(scroll);
+    },
+
+    setScrollVisualFeedback(direction) {
+      const container = this.$refs.optionsContainer;
+      if (!container) return;
+      container.classList.remove('scroll-top', 'scroll-bottom'); 
+      if (direction === 'top') {
+        container.classList.add('scroll-top');
+      } else if (direction === 'bottom') {
+        container.classList.add('scroll-bottom');
+      } 
+    },
+
+    stopAutoScroll() {
+      this.isAutoScrolling = false;
+      this.scrollSpeed = 0;
+      this.setScrollVisualFeedback('none');
+      if (this.scrollAnimation) {
+        cancelAnimationFrame(this.scrollAnimation);
+        this.scrollAnimation = null;
+      }
+    },
+
     checkAnswer(selectedOption) {
+      this.stopAutoScroll(); 
       this.answered = true;
       this.selectedAnswer = selectedOption;
       
       if (selectedOption.correct) {
         this.score++;
       }
+      
+      this.$nextTick(() => {
+        setTimeout(() => {
+          this.scrollToNextButton();
+          this.focusNextButton();
+        }, 300);
+      });
+    },
+
+    scrollToNextButton() {
+      const nextButton = this.$refs.nextButton;
+      if (nextButton) {
+        nextButton.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }
+    },
+
+    focusNextButton() {
+      this.$nextTick(() => {
+        const nextButton = this.$refs.nextButton;
+        if (nextButton) {
+          nextButton.focus();
+        }
+      });
     },
 
     nextQuestion() {
+      this.stopAutoScroll();
       if (this.isLastQuestion) {
         this.finishPractice();
       } else {
@@ -294,6 +410,13 @@ export default {
         this.answered = false;
         this.selectedAnswer = null;
         this.hasPlayedAudio = false;
+        
+        this.$nextTick(() => {
+          const questionElement = document.querySelector('.question-section');
+          if (questionElement) {
+            questionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
       }
     },
 
@@ -313,7 +436,11 @@ export default {
     goBack() {
       this.$router.back();
     }
-  }}
+  },
+  beforeUnmount() {
+    this.stopAutoScroll();
+  }
+}
 </script>
 
 <style scoped>
@@ -462,6 +589,9 @@ export default {
   display: grid;
   gap: 15px;
   margin-bottom: 30px;
+  position: relative;
+  min-height: 400px;
+  transition: all 0.3s ease;
 }
 
 .option-btn {
@@ -541,11 +671,61 @@ export default {
   font-weight: bold;
   font-size: 1em;
   transition: all 0.3s ease;
+  outline: none;
+}
+
+.next-btn:focus {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
 }
 
 .next-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* Auto-scroll CSS */
+.options-container.scroll-top {
+  box-shadow: inset 0 10px 20px -10px rgba(255, 107, 107, 0.5);
+}
+
+.options-container.scroll-bottom {
+  box-shadow: inset 0 -10px 20px -10px rgba(78, 205, 196, 0.5);
+}
+
+.options-container::before,
+.options-container::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 20%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+.options-container::before {
+  top: 0;
+  background: linear-gradient(to bottom, 
+    rgba(255, 107, 107, 0.2) 0%, 
+    transparent 100%);
+}
+
+.options-container::after {
+  bottom: 0;
+  background: linear-gradient(to top, 
+    rgba(78, 205, 196, 0.2) 0%, 
+    transparent 100%);
+}
+
+.options-container.scroll-top::before {
+  opacity: 1;
+}
+
+.options-container.scroll-bottom::after {
+  opacity: 1;
 }
 
 @keyframes slideUp {
@@ -561,6 +741,10 @@ export default {
   
   .progress-info {
     text-align: center;
+  }
+  
+  .options-container {
+    min-height: 300px;
   }
 }
 </style>
