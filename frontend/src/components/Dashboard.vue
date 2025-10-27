@@ -1,4 +1,5 @@
-<template>  <div class="dashboard">
+<template>
+  <div class="dashboard">
     <div class="top-section">
       <div class="floating-balloons">
         <div class="balloon balloon1">🎈</div>
@@ -28,7 +29,9 @@
           </div>
         </div>
       </div>
-    </div>    <div class="progress-bubbles">
+    </div>
+
+    <div class="progress-bubbles">
       <div class="progress-bubble progress-main">
         <div class="bubble-emoji">🚀</div>
         <div class="bubble-content">
@@ -82,55 +85,23 @@
       </div>
       
       <div class="explore-cards">
-        <div class="explore-card card-1" @click="navigateToSection('basic-words')">
-          <div class="card-emoji">📚</div>
+        <div 
+          v-for="(category, index) in categories" 
+          :key="category.id" 
+          :class="['explore-card', 'card-' + (index + 1)]" 
+          @click="navigateToCategory(category.name)"
+        >
+          <div class="card-emoji">{{ category.emoji }}</div>
           <div class="card-wave"></div>
-          <h3>Grundläggande</h3>
-          <p>Hej, tack, ja & nej</p>
+          <h3>{{ category.name }}</h3>
+          <p>{{ category.description }}</p>
           <div class="card-sparkle">✨</div>
         </div>
-
-        <div class="explore-card card-2" @click="navigateToSection('colors')">
-          <div class="card-emoji">🎨</div>
-          <div class="card-wave"></div>
-          <h3>Färger</h3>
-          <p>Regnbågens alla färger</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <div class="explore-card card-3" @click="navigateToSection('animals')">
-          <div class="card-emoji">🐶</div>
-          <div class="card-wave"></div>
-          <h3>Djur</h3>
-          <p>Djur från hela världen</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <div class="explore-card card-4" @click="navigateToSection('numbers')">
-          <div class="card-emoji">🔢</div>
-          <div class="card-wave"></div>
-          <h3>Siffror</h3>
-          <p>1, 2, 3... låt oss räkna!</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <div class="explore-card card-5" @click="navigateToSection('food')">
-          <div class="card-emoji">🍎</div>
-          <div class="card-wave"></div>
-          <h3>Mat</h3>
-          <p>Gott och nyttigt</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <div class="explore-card card-6" @click="navigateToSection('family')">
-          <div class="card-emoji">👨‍👩‍👧‍👦</div>
-          <div class="card-wave"></div>
-          <h3>Familj</h3>
-          <p>Mamma, pappa & alla andra</p>
-          <div class="card-sparkle">✨</div>
-        </div>        
+        
       </div>
-    </div>    <div class="encouragement-footer">
+    </div>
+
+    <div class="encouragement-footer">
       <div class="encouragement-message">
         <div class="message-emoji">💫</div>
         <div class="message-text">
@@ -150,7 +121,15 @@ export default {
     return {
       user: JSON.parse(localStorage.getItem('user') || '{}'),
       learnedWords: 0,
-      completedQuizzes: 0
+      completedQuizzes: 0,
+      categories: [
+        { id: 1, name: 'Färger', emoji: '🎨', description: 'Upptäck alla färger' },
+        { id: 2, name: 'Djur', emoji: '🐶', description: 'Djur från hela världen' },
+        { id: 3, name: 'Siffror', emoji: '🔢', description: '1, 2, 3... låt oss räkna!' },
+        { id: 4, name: 'Mat', emoji: '🍎', description: 'Gott och nyttigt' },
+        { id: 5, name: 'Familj', emoji: '👨‍👩‍👧‍👦', description: 'Mamma, pappa & alla andra' },
+        { id: 6, name: 'Vardagsord', emoji: '💬', description: 'Ord för vardagen' }
+      ]
     }
   },
   computed: {
@@ -187,19 +166,27 @@ export default {
       localStorage.removeItem('user');
       this.$router.push('/');
     },
-    navigateToSection(section) {
-      alert(`Öppnar ${section} - kommer snart!`);
+    navigateToCategory(categoryName) {
+      // Navigerar till en dynamisk route baserat på kategorinamn
+      this.$router.push(`/category/${categoryName}`);
     },
     startQuickPractice(type) {
       this.$router.push(`/practice/${type}`);
     },
     startQuiz() {
-  this.$router.push('/practice/quiz');
+      this.$router.push('/practice/quiz');
     }
   }
 }
 </script>
 
+---
+
+## 🎨 Stil (CSS)
+
+> **Obs:** CSS-koden nedan är oförändrad, men jag inkluderar den för att du ska ha allt samlat. **Den är nödvändig** för att korten (`card-1` till `card-6`) ska få sina unika färger, vilket nu hanteras av `:class="['explore-card', 'card-' + (index + 1)]"` i HTML-mallen.
+
+```css
 <style scoped>
 /* Din CSS-kod är oförändrad */
 .dashboard {
@@ -475,6 +462,7 @@ export default {
   box-shadow: 0 15px 35px rgba(0,0,0,0.25);
 }
 
+/* De unika färgklasserna som nu används via dynamisk bindning i v-for */
 .card-1 { background: linear-gradient(135deg, #FF6B6B, #FF8E53); }
 .card-2 { background: linear-gradient(135deg, #4ECDC4, #44A08D); }
 .card-3 { background: linear-gradient(135deg, #FFD700, #FF8E00); }
