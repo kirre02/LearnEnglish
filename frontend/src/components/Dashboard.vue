@@ -194,7 +194,7 @@ export default {
       this.$router.push(`/practice/${type}`);
     },
     startQuiz() {
-      this.$router.push('/quiz');
+  this.$router.push('/practice/quiz');
     }
   }
 }
