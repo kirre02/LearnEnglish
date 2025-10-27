@@ -12,8 +12,17 @@
         </div>
       </div>
 
+      <!-- Laddningsskärm -->
+      <div v-if="loading" class="loading-container">
+        <div class="loading-bubble">
+          <div class="loading-emoji">⏳</div>
+          <h3>Hämtar övningsord...</h3>
+          <p>Var god vänta medan vi förbereder din lyssnarövning!</p>
+        </div>
+      </div>
+
       <!-- Practice Content -->
-      <div class="practice-content">
+      <div v-else class="practice-content">
         <div class="question-section">
           <button @click="playQuestionAudio" class="audio-btn-large" :disabled="audioLoading">
             <span v-if="audioLoading">⏳</span>
@@ -54,128 +63,16 @@
 export default {
   name: 'ListenPractice',
   data() {
-    // Funktion för att blanda array (Fisher-Yates shuffle)
-    const shuffleArray = (array) => {
-      const shuffled = [...array];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      return shuffled;
-    };
-
-    // Alla tillgängliga frågor
-    const allQuestions = [
-      {
-        audioText: "Hello",
-        options: [
-          { text: "Hej", correct: true },
-          { text: "Tack", correct: false },
-          { text: "Adjö", correct: false },
-          { text: "Ursäkta", correct: false }
-        ]
-      },
-      {
-        audioText: "Apple",
-        options: [
-          { text: "Äpple", correct: true },
-          { text: "Banan", correct: false },
-          { text: "Apelsin", correct: false },
-          { text: "Päron", correct: false }
-        ]
-      },
-      {
-        audioText: "Thank you",
-        options: [
-          { text: "Tack", correct: true },
-          { text: "Hej", correct: false },
-          { text: "Förlåt", correct: false },
-          { text: "Varsågod", correct: false }
-        ]
-      },
-      {
-        audioText: "Water",
-        options: [
-          { text: "Vatten", correct: true },
-          { text: "Mjölk", correct: false },
-          { text: "Juice", correct: false },
-          { text: "Kaffe", correct: false }
-        ]
-      },
-      {
-        audioText: "Goodbye",
-        options: [
-          { text: "Hejdå", correct: true },
-          { text: "God morgon", correct: false },
-          { text: "God natt", correct: false },
-          { text: "Välkommen", correct: false }
-        ]
-      },
-      {
-        audioText: "Book",
-        options: [
-          { text: "Bok", correct: true },
-          { text: "Penna", correct: false },
-          { text: "Papper", correct: false },
-          { text: "Skrivbok", correct: false }
-        ]
-      },
-      {
-        audioText: "House",
-        options: [
-          { text: "Hus", correct: true },
-          { text: "Bil", correct: false },
-          { text: "Träd", correct: false },
-          { text: "Gata", correct: false }
-        ]
-      },
-      {
-        audioText: "Cat",
-        options: [
-          { text: "Katt", correct: true },
-          { text: "Hund", correct: false },
-          { text: "Fågel", correct: false },
-          { text: "Fisk", correct: false }
-        ]
-      },
-      {
-        audioText: "School",
-        options: [
-          { text: "Skola", correct: true },
-          { text: "Arbete", correct: false },
-          { text: "Hem", correct: false },
-          { text: "Park", correct: false }
-        ]
-      },
-      {
-        audioText: "Car",
-        options: [
-          { text: "Bil", correct: true },
-          { text: "Cykel", correct: false },
-          { text: "Buss", correct: false },
-          { text: "Tåg", correct: false }
-        ]
-      }
-    ];
-
-    // Förbered frågor med slumpmässiga alternativ
-    const preparedQuestions = allQuestions.map(question => {
-      return {
-        ...question,
-        options: shuffleArray([...question.options]) // Blanda svarsalternativen
-      };
-    });
-
     return {
       currentQuestionIndex: 0,
       answered: false,
       selectedAnswer: null,
       audioLoading: false,
-      hasPlayedAudio: false, // NY: Spelat upp ljud för denna fråga
+      hasPlayedAudio: false,
       score: 0,
-      questions: shuffleArray(preparedQuestions), // Blanda både frågor och alternativ
-      allQuestions: allQuestions,
-      shuffleArray: shuffleArray
+      questions: [],
+      loading: true,
+      allWords: [] // Lagra alla ord från databasen
     }
   },
   computed: {
@@ -204,21 +101,149 @@ export default {
       return this.selectedAnswer?.correct === true;
     }
   },
+  async mounted() {
+    await this.loadQuestionsFromDatabase();
+  },
   methods: {
+    // Funktion för att blanda array (Fisher-Yates shuffle)
+    shuffleArray(array) {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    },
+
+    async loadQuestionsFromDatabase() {
+      this.loading = true;
+      try {
+        // Hämta alla ord från databasen
+        const response = await fetch('http://localhost:9001/api/words');
+        if (!response.ok) throw new Error('Kunde inte hämta ord från databasen');
+        
+        this.allWords = await response.json();
+        
+        if (this.allWords.length === 0) {
+          throw new Error('Inga ord hittades i databasen');
+        }
+
+        // Välj 10 slumpmässiga ord (mindre än quiz för lyssnarövning)
+        const randomWords = this.shuffleArray([...this.allWords]).slice(0, 10);
+
+        // Skapa lyssnarfrågor från databasorden
+        this.questions = randomWords.map(word => {
+          // Hämta felaktiga alternativ från wrong_options eller skapa egna
+          const wrongOptions = JSON.parse(word.wrong_options || '[]');
+          
+          // Om det inte finns nog med felaktiga alternativ, skapa några från andra ord
+          let additionalWrongOptions = [];
+          if (wrongOptions.length < 3) {
+            const otherWords = this.shuffleArray(
+              this.allWords.filter(w => w.swedish !== word.swedish)
+            ).slice(0, 3 - wrongOptions.length);
+            additionalWrongOptions = otherWords.map(w => w.swedish);
+          }
+
+          // Skapa alla felaktiga alternativ
+          const allWrongOptions = [
+            ...wrongOptions.slice(0, 3),
+            ...additionalWrongOptions
+          ].slice(0, 3); // Ta max 3 felaktiga
+
+          // Skapa alternativ (rätt svar + 3 felaktiga)
+          const options = this.shuffleArray([
+            { text: word.swedish, correct: true }, // Rätt svar på svenska
+            ...allWrongOptions.map(opt => ({ text: opt, correct: false }))
+          ]);
+
+          return {
+            audioText: word.english, // Engelska ordet som spelas upp
+            options: options, // Svenska alternativ
+            hint: `Lyssna på "${word.english}"`
+          };
+        });
+
+        console.log('Laddade lyssnarfrågor från databasen:', this.questions.length);
+
+      } catch (error) {
+        console.error('Error loading listening questions from database:', error);
+        this.useFallbackQuestions();
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    useFallbackQuestions() {
+      const fallbackQuestions = [
+        {
+          audioText: "Hello",
+          options: [
+            { text: "Hej", correct: true },
+            { text: "Tack", correct: false },
+            { text: "Adjö", correct: false },
+            { text: "Ursäkta", correct: false }
+          ]
+        },
+        {
+          audioText: "Apple",
+          options: [
+            { text: "Äpple", correct: true },
+            { text: "Banan", correct: false },
+            { text: "Apelsin", correct: false },
+            { text: "Päron", correct: false }
+          ]
+        },
+        {
+          audioText: "Thank you",
+          options: [
+            { text: "Tack", correct: true },
+            { text: "Hej", correct: false },
+            { text: "Förlåt", correct: false },
+            { text: "Varsågod", correct: false }
+          ]
+        },
+        {
+          audioText: "Water",
+          options: [
+            { text: "Vatten", correct: true },
+            { text: "Mjölk", correct: false },
+            { text: "Juice", correct: false },
+            { text: "Kaffe", correct: false }
+          ]
+        },
+        {
+          audioText: "Goodbye",
+          options: [
+            { text: "Hejdå", correct: true },
+            { text: "God morgon", correct: false },
+            { text: "God natt", correct: false },
+            { text: "Välkommen", correct: false }
+          ]
+        }
+      ];
+      
+      this.questions = this.shuffleArray(fallbackQuestions);
+      console.log('Använder fallback-frågor för lyssning');
+    },
+
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
     },
+
     getOptionClass(option) {
       if (!this.answered) return '';
       if (option.correct) return 'correct';
       if (option === this.selectedAnswer) return 'incorrect';
       return '';
     },
+
     async playQuestionAudio() {
       await this.playAudio(this.currentQuestion.audioText);
-      this.hasPlayedAudio = true; // NY: Markera att ljud har spelats upp
+      this.hasPlayedAudio = true;
     },
+
     async playAudio(text) {
       try {
         if (this.audioLoading) return;
@@ -251,6 +276,7 @@ export default {
         this.audioLoading = false;
       }
     },
+
     checkAnswer(selectedOption) {
       this.answered = true;
       this.selectedAnswer = selectedOption;
@@ -259,6 +285,7 @@ export default {
         this.score++;
       }
     },
+
     nextQuestion() {
       if (this.isLastQuestion) {
         this.finishPractice();
@@ -266,32 +293,69 @@ export default {
         this.currentQuestionIndex++;
         this.answered = false;
         this.selectedAnswer = null;
-        this.hasPlayedAudio = false; // NY: Återställ för nästa fråga
-        
-        // TA BORT automatisk uppspelning - användaren måste klicka själv
+        this.hasPlayedAudio = false;
       }
     },
+
     finishPractice() {
-      // Spara progress
       this.savePracticeProgress();
       alert(`Övning avslutad! 🎉\nDu fick ${this.score} av ${this.questions.length} rätt!`);
       this.$router.push('/dashboard');
     },
+
     savePracticeProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
       progress.listeningPractice = (progress.listeningPractice || 0) + 1;
       progress.learnedWords = Math.min(125, (progress.learnedWords || 0) + this.score);
       localStorage.setItem('learningProgress', JSON.stringify(progress));
     },
+
     goBack() {
       this.$router.back();
     }
-  }
-  // TA BORT mounted() - ingen automatisk uppspelning längre
-}
+  }}
 </script>
 
 <style scoped>
+/* Lägg till laddningsstilar */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.loading-bubble {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  color: white;
+  padding: 40px;
+  border-radius: 25px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3);
+}
+
+.loading-emoji {
+  font-size: 4em;
+  margin-bottom: 20px;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-bubble h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.5em;
+}
+
+.loading-bubble p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* Behåll alla dina ursprungliga CSS-stilar här */
 .practice-page {
   min-height: 100vh;
   background-color: #f7f3ed;
