@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import userRoutes from "./routes/userRoutes.js";
 import wordRoutes from "./routes/wordRoutes.js";
-import selectedWordsRoutes from "./routes/selectedWordsRoute.js";
 import resultRoutes from "./routes/resultRoutes.js";
 
 const app = express();
@@ -24,9 +23,7 @@ app.get("/hello", (req, res) => {
 
 app.use("/api/users", userRoutes);
 app.use("/api/words", wordRoutes); // Slumpmässiga glosor
-app.use("/api/words/selected", selectedWordsRoutes); // Utvalda glosor
 app.use("/api/results", resultRoutes); // Resultat
-
 app.listen(PORT, () => {
   console.log(`Server has started on port ${PORT}`);
 });
