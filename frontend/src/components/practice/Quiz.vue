@@ -1,5 +1,6 @@
 <template>
-  <div class="quiz-page-container">    <div class="quiz-container">
+  <div class="quiz-page-container">
+    <div class="quiz-container">
       <div class="quiz-header">
         <button @click="goBack" class="back-btn">← Tillbaka</button>
         <div class="quiz-progress">
@@ -7,19 +8,34 @@
           <div class="progress-bar">
             <div class="progress-fill" :style="progressBarStyle"></div>
           </div>
-        </div>      </div>
+        </div>
+      </div>
 
-    <div v-if="!quizFinished" class="quiz-content">
+      <div v-if="loading" class="loading-container">
+        <div class="loading-bubble">
+          <div class="loading-emoji">⏳</div>
+          <h3>Hämtar frågor...</h3>
+          <p>Var god vänta medan vi förbereder ditt quiz!</p>
+        </div>
+      </div>
+
+      <div v-else-if="!quizFinished" class="quiz-content">
         <div class="question-bubble">
           <div class="question-header">
             <div class="question-emoji">🧠</div>
           </div>
-          <h2>{{ currentQuestion.question }}</h2>
-          <div class="question-hint" v-if="currentQuestion.hint">
-            💡 {{ currentQuestion.hint }}
-          </div>        </div>
+          <h2>Vad är "{{ getSwedishWord() }}" på engelska?</h2>
+          <div class="question-hint">
+            💡 Tänk på ordet du lärt dig!
+          </div>
+        </div>
 
-        <div class="options-container">
+        <div 
+          class="options-container"
+          @mousemove="handleMouseMove"
+          ref="optionsContainer"
+          @mouseleave="stopAutoScroll"
+        >
           <button
             v-for="(option, index) in currentQuestion.options"
             :key="index"
@@ -39,8 +55,9 @@
               <span v-if="currentLoadingOption === option">⏳</span>
               <span v-else>🔊</span>
             </button>
-          </button>        </div>
-      <div v-if="answered" class="feedback-bubble" :class="feedbackClass">
+          </button>
+        </div>
+        <div v-if="answered" class="feedback-bubble" :class="feedbackClass">
           <div class="feedback-emoji">{{ feedbackEmoji }}</div>
           <div class="feedback-text">{{ feedbackText }}</div>
           <button
@@ -52,9 +69,16 @@
             <span v-if="audioLoading && currentLoadingOption === 'correct-answer'">⏳ Laddar...</span>
             <span v-else>🔊 Hör rätt svar</span>
           </button>
-          <button @click="nextQuestion" class="next-btn">
+          
+          <button 
+            @click="nextQuestion" 
+            class="next-btn"
+            ref="nextButton"
+            @keydown.enter.space="nextQuestion"
+            tabindex="0">
             {{ isLastQuestion ? 'Se resultat' : 'Nästa fråga' }} →
           </button>
+          
         </div>
       </div>
 
@@ -85,185 +109,34 @@
 <script>
 export default {
   name: 'Quiz',
-  data() {
-    const shuffleArray = (array) => {
-      const shuffled = [...array];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      return shuffled;
-    };
-
-    // UTÖKAD LISTA MED 20 FRÅGOR
-    const initialQuestions = [
-      {
-        question: "Vad betyder 'Hej' på engelska?",
-        options: ["Hello", "Goodbye", "Thank you", "Excuse me"],
-        correctAnswer: "Hello",
-        hint: "Det är det första man säger när man träffar någon",
-        audioText: "Hello"
-      },
-      {
-        question: "Vad är 'Äpple' på engelska?",
-        options: ["Pear", "Banana", "Apple", "Orange"],
-        correctAnswer: "Apple",
-        hint: "En röd eller grön frukt",
-        audioText: "Apple"
-      },
-      {
-        question: "Vad betyder 'Tack' på engelska?",
-        options: ["Sorry", "Thank you", "You're welcome", "Bye"],
-        correctAnswer: "Thank you",
-        hint: "Säger man när någon ger dig något",
-        audioText: "Thank you"
-      },
-      {
-        question: "Hur säger man 'Vatten' på engelska?",
-        options: ["Milk", "Juice", "Water", "Coffee"],
-        correctAnswer: "Water",
-        hint: "Vätska man dricker när man är törstig",
-        audioText: "Water"
-      },
-      {
-        question: "Vad betyder 'Hejdå' på engelska?",
-        options: ["Good morning", "Good night", "Goodbye", "Welcome"],
-        correctAnswer: "Goodbye",
-        hint: "Säger man när man lämnar",
-        audioText: "Goodbye"
-      },
-      {
-        question: "Vad är 'Bok' på engelska?",
-        options: ["Book", "Paper", "Pen", "Library"],
-        correctAnswer: "Book",
-        hint: "Något man läser",
-        audioText: "Book"
-      },
-      {
-        question: "Vad betyder 'Ja' på engelska?",
-        options: ["No", "Yes", "Maybe", "Please"],
-        correctAnswer: "Yes",
-        hint: "Motsatsen till nej",
-        audioText: "Yes"
-      },
-      {
-        question: "Hur säger man 'Hus' på engelska?",
-        options: ["Car", "House", "Garden", "Street"],
-        correctAnswer: "House",
-        hint: "Där man bor",
-        audioText: "House"
-      },
-      {
-        question: "Vad är 'Katt' på engelska?",
-        options: ["Dog", "Cat", "Bird", "Fish"],
-        correctAnswer: "Cat",
-        hint: "Ett husdjur som jamar",
-        audioText: "Cat"
-      },
-      {
-        question: "Vad betyder 'Nej' på engelska?",
-        options: ["Yes", "No", "Okay", "Sure"],
-        correctAnswer: "No",
-        hint: "Motsatsen till ja",
-        audioText: "No"
-      },
-      {
-        question: "Hur säger man 'Skola' på engelska?",
-        options: ["Work", "School", "Home", "Playground"],
-        correctAnswer: "School",
-        hint: "Där barn lär sig",
-        audioText: "School"
-      },
-      {
-        question: "Vad är 'Bil' på engelska?",
-        options: ["Bike", "Bus", "Car", "Train"],
-        correctAnswer: "Car",
-        hint: "Ett fordon med fyra hjul",
-        audioText: "Car"
-      },
-      {
-        question: "Vad betyder 'Förlåt' på engelska?",
-        options: ["Excuse me", "Sorry", "Thank you", "Please"],
-        correctAnswer: "Sorry",
-        hint: "Säger man när man gjort något fel",
-        audioText: "Sorry"
-      },
-      {
-        question: "Hur säger man 'Familj' på engelska?",
-        options: ["Friends", "Family", "Parents", "Children"],
-        correctAnswer: "Family",
-        hint: "Mamma, pappa, barn",
-        audioText: "Family"
-      },
-      {
-        question: "Vad är 'Mat' på engelska?",
-        options: ["Drink", "Food", "Water", "Bread"],
-        correctAnswer: "Food",
-        hint: "Något man äter",
-        audioText: "Food"
-      },
-      {
-        question: "Vad betyder 'Snälla' på engelska?",
-        options: ["Please", "Thank you", "Sorry", "Hello"],
-        correctAnswer: "Please",
-        hint: "Säger man när man ber om något",
-        audioText: "Please"
-      },
-      {
-        question: "Hur säger man 'Tid' på engelska?",
-        options: ["Clock", "Time", "Watch", "Hour"],
-        correctAnswer: "Time",
-        hint: "Vad klockan är",
-        audioText: "Time"
-      },
-      {
-        question: "Vad är 'Dag' på engelska?",
-        options: ["Night", "Day", "Week", "Month"],
-        correctAnswer: "Day",
-        hint: "24 timmar",
-        audioText: "Day"
-      },
-      {
-        question: "Vad betyder 'Stor' på engelska?",
-        options: ["Small", "Big", "Tall", "Short"],
-        correctAnswer: "Big",
-        hint: "Motsatsen till liten",
-        audioText: "Big"      },
-      {
-        question: "Vad betyder 'Lycklig' på engelska?",
-        options: ["Sad", "Happy", "Angry", "Tired"],
-        correctAnswer: "Happy",
-        hint: "När man känner sig glad",
-        audioText: "Happy"
-      }
-    ];
-
-    const preparedQuestions = initialQuestions.map(question => {
-      return {
-        ...question,
-        options: shuffleArray([...question.options])
-      };
-    });
-
+  data() { 
     return {
       score: 0,
       currentQuestionIndex: 0,
       answered: false,
       selectedAnswer: null,
-      quizFinished: false,      progress: {}, // För att lagra laddad progress
-      questions: shuffleArray(preparedQuestions),
-      initialQuestions: initialQuestions,
-      shuffleArray: shuffleArray,
+      quizFinished: false,
+      progress: {}, 
+      questions: [],
+      loading: true,
 
       // DATA FÖR LJUD
       audioLoading: false,
       currentLoadingOption: null,
       currentAudio: null,
-      isSpeechSupported: 'speechSynthesis' in window    }
+      isSpeechSupported: 'speechSynthesis' in window,
+      
+      // DATA FÖR AUTO-SCROLL
+      autoScrollSpeed: 4,
+      isAutoScrolling: false,
+      scrollAnimation: null,
+      scrollSpeed: 0, 
+    }
   },
   computed: {
     currentQuestion() {
-      return this.questions[this.currentQuestionIndex];
+      const question = this.questions[this.currentQuestionIndex];
+      return question;
     },
     isLastQuestion() {
       return this.currentQuestionIndex === this.questions.length - 1;
@@ -278,6 +151,7 @@ export default {
     feedbackEmoji() {
       return this.selectedAnswer === this.currentQuestion.correctAnswer ? '🎉' : '💡';
     },
+    // FIX: feedbackText använder nu engelska som korrekt svar
     feedbackText() {
       return this.selectedAnswer === this.currentQuestion.correctAnswer
         ? 'Rätt svar! Bra jobbat!'
@@ -309,22 +183,22 @@ export default {
     },
     isAnswerCorrect() {
       return this.selectedAnswer === this.currentQuestion.correctAnswer;
-    },  },
-  mounted() {
-    // Kolla om vi ska visa resultat direkt (när man kommer tillbaka från results-sidan)
-  if (this.$route.query.showResults === 'true') {
+    },
+  },
+  async mounted() {
+    if (this.$route.query.showResults === 'true') {
       const savedState = localStorage.getItem('lastQuizState');
       if (savedState) {
         try {
           const quizState = JSON.parse(savedState);
           this.quizFinished = true;
-        this.score = quizState.score;
+          this.score = quizState.score;
+          this.questions = new Array(quizState.questionsLength).fill({}); 
           localStorage.removeItem('lastQuizState');
         } catch (e) {
           console.error("Kunde inte tolka sparad quiz-state:", e);
         }
       }
-      // Ta bort query-parametern så den inte finns kvar vid refresh
       this.$router.replace({ query: {} });
     }
 
@@ -333,46 +207,251 @@ export default {
     }
     this.loadProgress();
     
-    // Logga om ljudstöd saknas
     if (!this.isSpeechSupported) {
       console.log('Web Speech API är inte tillgängligt i denna webbläsare');
     }
+
+    await this.loadQuestionsFromDatabase();
   },
   methods: {
+    // NY METOD: Hämta det svenska ordet (prompten)
+    getSwedishWord() {
+      if (!this.currentQuestion) return '';
+      // Prompten är nu det svenska ordet
+      return this.currentQuestion.swedish || '[Ord saknas]';
+    },
+
+    shuffleArray(array) {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    },
+
+    async loadQuestionsFromDatabase() {
+      this.loading = true;
+      try {
+        const response = await fetch('http://localhost:9001/api/words');
+        if (!response.ok) throw new Error('Kunde inte hämta ord från databasen');
+        
+        const allWords = await response.json();
+        
+        if (allWords.length === 0) {
+          throw new Error('Inga ord hittades i databasen');
+        }
+
+        const randomWords = this.shuffleArray([...allWords]).slice(0, 20);
+        
+        // Hämta alla engelska ord för felaktiga alternativ
+        const allEnglishWords = allWords.map(w => w.english);
+
+        this.questions = randomWords.map(word => {
+          
+          // Hämta 3 slumpmässiga engelska ord som inte är det rätta svaret
+          const wrongEnglishOptions = this.shuffleArray(
+            allEnglishWords.filter(engWord => engWord !== word.english)
+          ).slice(0, 3);
+
+          // Skapa alternativ (rätt svar i engelska + 3 felaktiga i engelska)
+          const options = this.shuffleArray([
+            word.english, // Rätt svar är nu engelska
+            ...wrongEnglishOptions
+          ]);
+
+          return {
+            swedish: word.swedish, // FIX: Svenska ordet är frågan (prompt)
+            correctAnswer: word.english, // FIX: Engelska ordet är rätt svar
+            options: options, // Alternativen är engelska
+            hint: `Öva på ordet "${word.swedish}"`,
+            audioText: word.english // Ljudet spelas upp i engelska
+          };
+        });
+
+        console.log('Laddade frågor från databasen:', this.questions.length);
+
+      } catch (error) {
+        console.error('Error loading questions from database:', error);
+        this.useFallbackQuestions();
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // FIX: Använder svenska som prompt och engelska som svar/alternativ
+    useFallbackQuestions() {
+      const fallbackQuestions = [
+        {
+          swedish: "Hej",  // FIX
+          options: ["Hello", "Goodbye", "Thank you", "Excuse me"], // FIX
+          correctAnswer: "Hello", // FIX
+          hint: "Det är det första man säger när man träffar någon",
+          audioText: "Hello"
+        },
+        {
+          swedish: "Äpple",  // FIX
+          options: ["Pear", "Banana", "Apple", "Orange"], // FIX
+          correctAnswer: "Apple", // FIX
+          hint: "En röd eller grön frukt",
+          audioText: "Apple"
+        },
+        {
+          swedish: "Adjö",
+          options: ["Hello", "Goodbye", "Thank you", "Excuse me"],
+          correctAnswer: "Goodbye",
+          hint: "Säger man när man går",
+          audioText: "Goodbye"
+        },
+        {
+          swedish: "Tack", 
+          options: ["Hello", "Goodbye", "Thank you", "Excuse me"],
+          correctAnswer: "Thank you",
+          hint: "Säger man när man får något",
+          audioText: "Thank you"
+        }
+      ];
+      
+      this.questions = this.shuffleArray(fallbackQuestions).slice(0, 20);
+      console.log('Använder fallback-frågor');
+    },
+
+    // AUTO-SCROLL METODER (oförändrade)
+    handleMouseMove(event) {
+      if (this.answered || this.quizFinished) {
+        this.stopAutoScroll();
+        return;
+      }
+      
+      const container = this.$refs.optionsContainer;
+      if (!container) return;       const mouseY = event.clientY;
+      const scrollZoneHeight = window.innerHeight * 0.15;
+      const topZone = scrollZoneHeight;
+      const bottomZone = window.innerHeight - scrollZoneHeight;
+      
+      let newScrollSpeed = 0;
+      
+      if (mouseY < topZone) { 
+        newScrollSpeed = -this.autoScrollSpeed;
+      } else if (mouseY > bottomZone) { 
+        newScrollSpeed = this.autoScrollSpeed;
+      } 
+      if (newScrollSpeed !== 0 && !this.isAutoScrolling) {
+        this.startAutoScroll(newScrollSpeed);
+        this.setScrollVisualFeedback(newScrollSpeed < 0 ? 'top' : 'bottom');
+      } else if (newScrollSpeed === 0 && this.isAutoScrolling) {
+        this.stopAutoScroll();
+      } else if (this.isAutoScrolling && this.scrollSpeed !== newScrollSpeed) {
+        this.stopAutoScroll();
+        this.startAutoScroll(newScrollSpeed);
+        this.setScrollVisualFeedback(newScrollSpeed < 0 ? 'top' : 'bottom');
+      }
+    },
+
+    startAutoScroll(speed) {
+      this.isAutoScrolling = true;
+      this.scrollSpeed = speed;
+
+      const scroll = () => {
+        if (!this.isAutoScrolling) return;         window.scrollBy(0, speed);
+        this.scrollAnimation = requestAnimationFrame(scroll);
+      }; 
+      if (this.scrollAnimation) {
+        cancelAnimationFrame(this.scrollAnimation);
+      }
+      this.scrollAnimation = requestAnimationFrame(scroll);
+    },
+
+    setScrollVisualFeedback(direction) {
+      const container = this.$refs.optionsContainer;
+      if (!container) return;
+      container.classList.remove('scroll-top', 'scroll-bottom'); 
+      if (direction === 'top') {
+        container.classList.add('scroll-top');
+      } else if (direction === 'bottom') {
+        container.classList.add('scroll-bottom');
+      } 
+    },
+
+    stopAutoScroll() {
+      this.isAutoScrolling = false;
+      this.scrollSpeed = 0;
+      this.setScrollVisualFeedback('none');
+      if (this.scrollAnimation) {
+        cancelAnimationFrame(this.scrollAnimation);
+        this.scrollAnimation = null;
+      }
+    },
+
+    // QUIZ METODER (oförändrade)
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
     },
+
     getOptionClass(option) {
       if (!this.answered) return '';
       if (option === this.currentQuestion.correctAnswer) return 'correct';
       if (option === this.selectedAnswer) return 'incorrect';
       return '';
     },
+
     checkAnswer(selectedAnswer) {
+      this.stopAutoScroll(); 
       this.answered = true;
       this.selectedAnswer = selectedAnswer;
 
       if (selectedAnswer === this.currentQuestion.correctAnswer) {
         this.score++;
+      } 
+      this.$nextTick(() => {
+        setTimeout(() => {
+          this.scrollToNextButton();
+          this.focusNextButton();
+        }, 300);
+      });
+    }, 
+    scrollToNextButton() {
+      const nextButton = this.$refs.nextButton;
+      if (nextButton) {
+        nextButton.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
       }
-    },
+    }, 
+    focusNextButton() {
+      this.$nextTick(() => {
+        const nextButton = this.$refs.nextButton;
+        if (nextButton) {
+          nextButton.focus();
+        }
+      });
+    }, 
     nextQuestion() {
+      this.stopAutoScroll();
       if (this.isLastQuestion) {
         this.finishQuiz();
       } else {
         this.currentQuestionIndex++;
         this.answered = false;
-        this.selectedAnswer = null;
+        this.selectedAnswer = null; 
+        this.$nextTick(() => {
+          const questionElement = document.querySelector('.question-bubble');
+          if (questionElement) {
+            questionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
       }
     },
+
     finishQuiz() {
       this.quizFinished = true;
       this.updateProgress();
       this.saveQuizResult();
-      this.saveQuizStateForResults(); // Spara state när quizet är avslutat
+      this.saveQuizStateForResults();
     },
-    // NY METOD: Spara quiz-state för återanvändning (från gren 4)
+
     saveQuizStateForResults() {
       const quizState = {
         score: this.score,
@@ -380,10 +459,11 @@ export default {
       };
       localStorage.setItem('lastQuizState', JSON.stringify(quizState));
     },
+
     async saveQuizResult() {
       try {
         const resultData = {
-          userId: 1, // TODO: Hämta från localStorage/auth
+          userId: 1,
           score: this.score,
           total: this.questions.length
         };
@@ -405,12 +485,14 @@ export default {
         console.error('Error saving quiz result:', error);
       }
     },
+
     updateProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
       progress.completedQuizzes = (progress.completedQuizzes || 0) + 1;
       progress.learnedWords = Math.min(125, (progress.learnedWords || 0) + this.score * 2);
       localStorage.setItem('learningProgress', JSON.stringify(progress));
     },
+
     loadProgress() {
       try {
         const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
@@ -420,41 +502,38 @@ export default {
         this.progress = {};
       }
     },
-    restartQuiz() {
-      const preparedQuestions = this.initialQuestions.map(question => {
-        return {
-          ...question,
-          options: this.shuffleArray([...question.options])
-        };
-      });
 
-      this.questions = this.shuffleArray(preparedQuestions);
+    async restartQuiz() {
       this.score = 0;
       this.currentQuestionIndex = 0;
       this.answered = false;
       this.selectedAnswer = null;
       this.quizFinished = false;
+      this.loading = true;
+      
+      await this.loadQuestionsFromDatabase();
     },
+
     goBack() {
       this.$router.back();
     },
+
     goToDashboard() {
       this.$router.push('/dashboard');
-    },
-    // Gå till resultat-sida (från gren 4)
-    goToAllResults() {
-      // Lägg till query-parameter för att visa resultat vid återkomst
+    },     goToAllResults() {
       this.$router.push({ path: '/results', query: { showResults: 'true' } });
     },
 
-    // LJUDMETODER (från gren 5)
+    // LJUDMETODER (oförändrade)
     async playOptionAudio(option) {
+      // AudioText är nu det engelska ordet, vilket är korrekt
       this.currentLoadingOption = option;
       await this.playAudio(option);
       this.currentLoadingOption = null;
     },
 
     async playCorrectAnswerAudio() {
+      // CorrectAnswer är nu det engelska ordet, vilket är korrekt
       this.currentLoadingOption = 'correct-answer';
       await this.playAudio(this.currentQuestion.correctAnswer);
       this.currentLoadingOption = null;
@@ -512,9 +591,9 @@ export default {
     shouldShowOptionAudio() {
       return this.isSpeechSupported;
     },
-  },
-
+  }, 
   beforeUnmount() {
+    this.stopAutoScroll();
     if (this.isSpeechSupported) {
       speechSynthesis.cancel();
     }
@@ -523,7 +602,48 @@ export default {
 </script>
 
 <style scoped>
-/* Samma CSS som tidigare - inga ändringar behövs */
+/* Här följer alla dina oförändrade CSS-stilar. */
+
+/* Lägg till laddningsstilar */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.loading-bubble {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  color: white;
+  padding: 40px;
+  border-radius: 25px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3);
+}
+
+.loading-emoji {
+  font-size: 4em;
+  margin-bottom: 20px;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-bubble h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.5em;
+}
+
+.loading-bubble p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* Behåll ALLA dina ursprungliga CSS-stilar här */
+/* De är exakt samma som i din ursprungliga quiz-komponent */
 .quiz-page-container {
   min-height: 100vh;
   background-color: #f7f3ed;
@@ -535,6 +655,7 @@ export default {
   max-width: 600px;
   margin: 0 auto;
 }
+
 .quiz-header {
   display: flex;
   justify-content: space-between;
@@ -581,6 +702,7 @@ export default {
   background: linear-gradient(135deg, #FF9A8B, #FF6A88);
   transition: width 0.3s ease;
 }
+
 .question-bubble {
   background: linear-gradient(135deg, #FF9A8B, #FF6A88);
   color: white;
@@ -619,11 +741,13 @@ export default {
   border-radius: 15px;
   font-size: 0.9em;
   margin-top: 15px;
-}
-.options-container {
+}.options-container {
   display: grid;
   gap: 15px;
   margin-bottom: 30px;
+  position: relative;
+  min-height: 400px;
+  transition: all 0.3s ease;
 }
 
 .option-btn {
@@ -740,9 +864,7 @@ export default {
 .audio-hint-btn:disabled {
   cursor: not-allowed;
   opacity: 0.6;
-}
-
-.next-btn {
+}.next-btn {
   background: white;
   color: #333;
   border: none;
@@ -751,13 +873,20 @@ export default {
   cursor: pointer;
   font-weight: bold;
   font-size: 1em;
-  transition: all 0.3s ease;
+  transition: all 0.3s ease; 
+  outline: none;
+}
+
+.next-btn:focus {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
 }
 
 .next-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
+
 .results-bubble {
   padding: 40px;
   border-radius: 25px;
@@ -821,10 +950,7 @@ export default {
 .play-again-btn {
   background: rgba(255,255,255,0.2);
   backdrop-filter: blur(10px);
-}
-
-/* NY CSS FÖR RESULTS-KNAPPEN */
-.results-btn {
+}.results-btn {
   background: rgba(102, 126, 234, 0.8);
   backdrop-filter: blur(10px);
 }
@@ -837,8 +963,46 @@ export default {
 .action-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}.options-container.scroll-top {
+  box-shadow: inset 0 10px 20px -10px rgba(255, 107, 107, 0.5);
 }
-@keyframes slideUp {
+
+.options-container.scroll-bottom {
+  box-shadow: inset 0 -10px 20px -10px rgba(78, 205, 196, 0.5);
+}.options-container::before,
+.options-container::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 20%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+.options-container::before {
+  top: 0;
+  background: linear-gradient(to bottom, 
+    rgba(255, 107, 107, 0.2) 0%, 
+    transparent 100%);
+}
+
+.options-container::after {
+  bottom: 0;
+  background: linear-gradient(to top, 
+    rgba(78, 205, 196, 0.2) 0%, 
+    transparent 100%);
+}
+
+.options-container.scroll-top::before {
+  opacity: 1;
+}
+
+.options-container.scroll-bottom::after {
+  opacity: 1;
+}@keyframes slideUp {
   0% { transform: translateY(20px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
 }
@@ -849,6 +1013,7 @@ export default {
   70% { transform: scale(0.9); }
   100% { transform: scale(1); opacity: 1; }
 }
+
 @media (max-width: 768px) {
   .quiz-header {
     flex-direction: column;
