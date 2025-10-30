@@ -526,6 +526,7 @@ export default {
 
     }
   }
+}
 
 </script>
 
