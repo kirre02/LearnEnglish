@@ -2,10 +2,10 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LoginForm from './components/LoginForm.vue'
 import Dashboard from './components/Dashboard.vue'
 import WelcomePage from './components/WelcomePage.vue'
-import Quiz from './components/Quiz.vue'
-import QuizResults from './components/QuizResults.vue'  // Från gren 4
-import PracticeLayout from './components/practice/PracticeLayout.vue' // Från gren 5
-import Register from './pages/Register.vue' // Från gren 5
+import Quiz from './components/practice/Quiz.vue'
+import QuizResults from './components/QuizResults.vue'
+import PracticeLayout from './components/practice/PracticeLayout.vue'
+import Register from './pages/Register.vue'
 
 const routes = [
   {
@@ -26,10 +26,7 @@ const routes = [
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: Dashboard  },  {
-    path: '/quiz',
-    name: 'Quiz',
-    component: Quiz
+    component: Dashboard
   },
   {
     // Från gren 4: Resultat-sida
@@ -43,7 +40,8 @@ const routes = [
     path: '/practice/:type',
     name: 'Practice',
     component: PracticeLayout,
-    props: true  }
+    props: true
+  }
 ]
 
 const router = createRouter({

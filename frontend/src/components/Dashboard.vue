@@ -1,6 +1,5 @@
 <template>
   <div class="dashboard">
-    <!-- Toppsektion med bubbeltegel och ballonger -->
     <div class="top-section">
       <div class="floating-balloons">
         <div class="balloon balloon1">🎈</div>
@@ -59,74 +58,6 @@
       </div>
     </div>
 
-    <!-- Huvudsektion - Vad vill du utforska idag? -->
-    <div class="explore-section">
-      <div class="section-header">
-        <h2>Vad vill du utforska idag? 🗺️</h2>
-        <div class="header-decoration">🎨🌟🎯</div>
-      </div>
-      
-      <div class="explore-cards">
-        <div class="explore-card card-1" @click="navigateToSection('basic-words')">
-          <div class="card-emoji">📚</div>
-          <div class="card-wave"></div>
-          <h3>Grundläggande</h3>
-          <p>Hej, tack, ja & nej</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <div class="explore-card card-2" @click="navigateToSection('colors')">
-          <div class="card-emoji">🎨</div>
-          <div class="card-wave"></div>
-          <h3>Färger</h3>
-          <p>Regnbågens alla färger</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <div class="explore-card card-3" @click="navigateToSection('animals')">
-          <div class="card-emoji">🐶</div>
-          <div class="card-wave"></div>
-          <h3>Djur</h3>
-          <p>Djur från hela världen</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <div class="explore-card card-4" @click="navigateToSection('numbers')">
-          <div class="card-emoji">🔢</div>
-          <div class="card-wave"></div>
-          <h3>Siffror</h3>
-          <p>1, 2, 3... låt oss räkna!</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <div class="explore-card card-5" @click="navigateToSection('food')">
-          <div class="card-emoji">🍎</div>
-          <div class="card-wave"></div>
-          <h3>Mat</h3>
-          <p>Gott och nyttigt</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <div class="explore-card card-6" @click="navigateToSection('family')">
-          <div class="card-emoji">👨‍👩‍👧‍👦</div>
-          <div class="card-wave"></div>
-          <h3>Familj</h3>
-          <p>Mamma, pappa & alla andra</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <!-- NYTT QUIZ-KORT -->
-        <div class="explore-card card-quiz" @click="startQuiz">
-          <div class="card-emoji">🧠</div>
-          <div class="card-wave"></div>
-          <h3>Quiz</h3>
-          <p>Testa dina kunskaper</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Snabbknappar -->
     <div class="quick-actions">
       <div class="actions-header">
         <h3>Snabbstart ⚡</h3>
@@ -152,7 +83,29 @@
       </div>
     </div>
 
-    <!-- Uppmuntrande avslutning -->
+    <div class="explore-section">
+      <div class="section-header">
+        <h2>Vad vill du utforska idag? 🗺️</h2>
+        <div class="header-decoration">🎨🌟🎯</div>
+      </div>
+      
+      <div class="explore-cards">
+        <div 
+          v-for="(category, index) in categories" 
+          :key="category.id" 
+          :class="['explore-card', 'card-' + (index + 1)]" 
+          @click="navigateToCategory(category.name)"
+        >
+          <div class="card-emoji">{{ category.emoji }}</div>
+          <div class="card-wave"></div>
+          <h3>{{ category.name }}</h3>
+          <p>{{ category.description }}</p>
+          <div class="card-sparkle">✨</div>
+        </div>
+        
+      </div>
+    </div>
+
     <div class="encouragement-footer">
       <div class="encouragement-message">
         <div class="message-emoji">💫</div>
@@ -177,7 +130,15 @@ export default {
     return {
       user: JSON.parse(localStorage.getItem('user') || '{}'),
       learnedWords: 0,
-      completedQuizzes: 0
+      completedQuizzes: 0,
+      categories: [
+        { id: 1, name: 'Färger', emoji: '🎨', description: 'Upptäck alla färger' },
+        { id: 2, name: 'Djur', emoji: '🐶', description: 'Djur från hela världen' },
+        { id: 3, name: 'Siffror', emoji: '🔢', description: '1, 2, 3... låt oss räkna!' },
+        { id: 4, name: 'Mat', emoji: '🍎', description: 'Gott och nyttigt' },
+        { id: 5, name: 'Familj', emoji: '👨‍👩‍👧‍👦', description: 'Mamma, pappa & alla andra' },
+        { id: 6, name: 'Vardagsord', emoji: '💬', description: 'Ord för vardagen' }
+      ]
     }
   },
   computed: {
@@ -214,29 +175,31 @@ export default {
       localStorage.removeItem('user');
       this.$router.push('/');
     },
-    navigateToSection(section) {
-      alert(`Öppnar ${section} - kommer snart!`);
+    navigateToCategory(categoryName) {
+      // Navigerar till en dynamisk route baserat på kategorinamn
+      this.$router.push(`/category/${categoryName}`);
     },
     startQuickPractice(type) {
-      const types = {
-        'listen': 'Lyssna',
-        'match': 'Matcha', 
-        'speak': 'Upprepa',
-        'mix': 'Blandat'
-      };
-      alert(`${types[type]} övning kommer snart!`);
+      this.$router.push(`/practice/${type}`);
     },
     startQuiz() {
-      this.$router.push('/quiz');
+      this.$router.push('/practice/quiz');
     },
-    goToResults() {
+     goToResults() {
       this.$router.push('/quiz-results');
-}
   }
-}
+}}
 </script>
 
+---
+
+## 🎨 Stil (CSS)
+
+> **Obs:** CSS-koden nedan är oförändrad, men jag inkluderar den för att du ska ha allt samlat. **Den är nödvändig** för att korten (`card-1` till `card-6`) ska få sina unika färger, vilket nu hanteras av `:class="['explore-card', 'card-' + (index + 1)]"` i HTML-mallen.
+
+```css
 <style scoped>
+/* Din CSS-kod är oförändrad */
 .dashboard {
   max-width: 1200px;
   margin: 0 auto;
@@ -534,6 +497,7 @@ export default {
   box-shadow: 0 15px 35px rgba(0,0,0,0.25);
 }
 
+/* De unika färgklasserna som nu används via dynamisk bindning i v-for */
 .card-1 { background: linear-gradient(135deg, #FF6B6B, #FF8E53); }
 .card-2 { background: linear-gradient(135deg, #4ECDC4, #44A08D); }
 .card-3 { background: linear-gradient(135deg, #FFD700, #FF8E00); }
@@ -758,4 +722,5 @@ export default {
     .results-btn {
     background: linear-gradient(135deg, #ff6a88, #ff99ac); 
   }
-}</style>
+}
+</style>
