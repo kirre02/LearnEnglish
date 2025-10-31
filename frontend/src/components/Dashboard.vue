@@ -33,7 +33,7 @@
     </div>
 
     <!-- Framstegs-bubblor -->
-    <div class="progress-bubbles">
+    <div class="progress-bubbles three-columns">
       <div class="progress-bubble progress-main">
         <div class="bubble-emoji">🚀</div>
         <div class="bubble-content">
@@ -51,11 +51,11 @@
         <div class="bubble-content">
           <h3>Quiz-mästare!</h3>
           <p>{{ completedQuizzes }} quiz avklarade</p>
-           <button class="action-btn results-btn" @click="goToResults">
-          <span class="btn-emoji">📊</span>
-          <span>Visa resultat</span>
-        </button>
         </div>
+      </div>
+
+     <div class="progress-bubble chart-bubble">
+        <QuizResultatMini />
       </div>
     </div>
 
@@ -167,7 +167,11 @@
 </template>
 
 <script>
+
+import QuizResultatMini from "@/components/QuizResults.vue"; 
+
 export default {
+  components: { QuizResultatMini },
   name: 'Dashboard',
   data() {
     return {
@@ -386,11 +390,16 @@ export default {
 }
 
 /* Framstegs-bubblor */
-.progress-bubbles {
+.progress-bubbles.three-columns {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 20px;
   margin-bottom: 40px;
+}
+
+.chart-bubble {
+  border: 3px solid #6a11cb;
+  padding: 10px;
 }
 
 .progress-bubble {
@@ -747,6 +756,6 @@ export default {
     gap: 15px;
   }
     .results-btn {
-    background: linear-gradient(135deg, #ff6a88, #ff99ac); /* pembe ton */
+    background: linear-gradient(135deg, #ff6a88, #ff99ac); 
   }
 }</style>

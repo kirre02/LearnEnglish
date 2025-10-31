@@ -27,8 +27,8 @@ export async function saveQuizResult(req, res) {
 // 🟡 2. Användarens statistik hämta
 export async function getUserQuizStats(req, res) {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ message: "Ingen token" });
+   const authHeader = req.headers.authorization;
+   if (!authHeader) return res.status(401).json({ message: "Ingen token" });
 
     const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback_secret");
@@ -44,3 +44,4 @@ export async function getUserQuizStats(req, res) {
     res.status(500).json({ message: "Serverfel vid hämtning av statistik" });
   }
 }
+

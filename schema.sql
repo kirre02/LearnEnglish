@@ -14,7 +14,6 @@ VALUES
     ('coder5', 'coder5@example.com', 'hashed_password5'),
     ('coder6', 'coder6@example.com', 'hashed_password6');
 
-<<<<<<< HEAD
 -- LÄGG TILL DENNA DEL FÖR RESULTS TABELLEN
 CREATE TABLE results (
     id SERIAL PRIMARY KEY,
@@ -31,7 +30,7 @@ INSERT INTO results (user_id, score, total) VALUES
 (1, 6, 10),
 (2, 9, 10),
 (1, 7, 10);
-=======
+
 CREATE TABLE IF NOT EXISTS words (
     id INT AUTO_INCREMENT PRIMARY KEY,
     category VARCHAR(50),
@@ -41,4 +40,19 @@ CREATE TABLE IF NOT EXISTS words (
     wrong2 VARCHAR(100) NOT NULL,
     wrong3 VARCHAR(100) NOT NULL
 );
->>>>>>> 5-audio-support
+
+CREATE TABLE quiz_results (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  correct_answers INT NOT NULL,
+  wrong_answers INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+INSERT INTO quiz_results (user_id, correct_answers, wrong_answers) VALUES
+(1, 14, 6),
+(1, 16, 4),
+(1, 18, 2);
+
+

@@ -33,9 +33,10 @@ const routes = [
   },
   {
     // Från gren 4: Resultat-sida
-    path: '/results',
-    name: 'Results',
-    component: QuizResults
+  path: '/quiz-results',
+  alias: '/results',
+  name: 'QuizResults',
+  component: QuizResults
   },
   {
     // Från gren 5: Practice modes
