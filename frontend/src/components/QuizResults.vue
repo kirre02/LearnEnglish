@@ -55,14 +55,13 @@ onMounted(async () => {
   }
 });
 
-// 🔹 Doğru cevap sayısı
 const correctAnswers = computed(() =>
   quizResults.value.map((r) => r.correct_answers)
 );
 
 // 🔹 Eğlenceli renk geçişleri
 const funColors = [
-  "rgba(255, 179, 71, 0.8)",
+  "rgba(255, 140, 0, 0.85)",
   "rgba(255, 99, 132, 0.8)",
   "rgba(78, 205, 196, 0.8)",
   "rgba(255, 206, 86, 0.8)",
@@ -129,6 +128,10 @@ const chartOptions = {
       barPercentage: 0.55,
     },
   },
+  layout: {
+    padding: 0,
+  },
+  backgroundColor: "transparent",
 };
 </script>
 
@@ -160,6 +163,13 @@ const chartOptions = {
 .chart-container {
   width: 100%;
   height: 160px; /* ✅ daha küçük yükseklik */
+}
+
+:deep(.chart-container div),
+:deep(.chart-container canvas) {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 .loading {
