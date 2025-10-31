@@ -206,9 +206,22 @@ export default {
     localStorage.removeItem('user');
     this.$router.push('/');
   },
-  navigateToSection(section) {
+ navigateToSection(section) {
+  const routes = {
+    'colors': '/färger',
+    'animals': '/djur', 
+    'numbers': '/siffror',
+    'food': '/mat',
+    'family': '/familj',
+    'basic-words': '/vardagsord'
+  };
+  
+  if (routes[section]) {
+    this.$router.push(routes[section]);
+  } else {
     alert(`Öppnar ${section} - kommer snart!`);
-  },
+  }
+},
   startQuickPractice(type) {
     this.$router.push(`/practice/${type}`);
   },
