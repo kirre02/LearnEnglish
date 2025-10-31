@@ -59,7 +59,6 @@ const correctAnswers = computed(() =>
   quizResults.value.map((r) => r.correct_answers)
 );
 
-// 🔹 Eğlenceli renk geçişleri
 const funColors = [
   "rgba(255, 140, 0, 0.85)",
   "rgba(255, 99, 132, 0.8)",
@@ -68,7 +67,6 @@ const funColors = [
   "rgba(153, 102, 255, 0.8)"
 ];
 
-// 🔹 Chart verisi
 const chartData = computed(() => ({
   labels: quizResults.value.map(
     (r) => new Date(r.created_at).toLocaleDateString("sv-SE")
@@ -81,18 +79,17 @@ const chartData = computed(() => ({
       ),
       borderRadius: 8,
       borderSkipped: false,
-      barThickness: 25, // daha ince bar
+      barThickness: 25, 
     },
   ],
 }));
 
-// ✅ Küçük, eğlenceli, 4'er adımlı grafik
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   animation: {
     duration: 800,
-    easing: "easeOutBounce", // 🎈 eğlenceli zıplama efekti
+    easing: "easeOutBounce", 
   },
   plugins: {
     legend: { display: false },
@@ -150,7 +147,7 @@ const chartOptions = {
 .quiz-resultat h1 {
   font-size: 1.3rem;
   margin-bottom: 0.8rem;
-  color: #222; /* ✅ Siyah ton (dashboard’la uyumlu) */
+  color: #222; 
   font-weight: bold;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   letter-spacing: 0.5px;
@@ -162,7 +159,7 @@ const chartOptions = {
 
 .chart-container {
   width: 100%;
-  height: 160px; /* ✅ daha küçük yükseklik */
+  height: 160px; 
 }
 
 :deep(.chart-container div),
