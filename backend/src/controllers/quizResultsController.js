@@ -1,20 +1,15 @@
+// controllers/quizResultsController.js
 import db from "../database/db.js";
-import jwt from "jsonwebtoken";
-
 
 export async function saveQuizResult(req, res) {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ message: "Ingen token" });
+    const { userId, correctAnswers, wrongAnswers } = req.body;
 
-    const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback_secret");
-
-    const { correctAnswers, wrongAnswers } = req.body;
+    if (!userId) return res.status(400).json({ message: "User ID krävs" });
 
     await db.query(
       "INSERT INTO quiz_results (user_id, correct_answers, wrong_answers) VALUES (?, ?, ?)",
-      [decoded.userId, correctAnswers, wrongAnswers]
+      [userId, correctAnswers, wrongAnswers]
     );
 
     res.status(201).json({ message: "Quizresultat sparat!" });
@@ -24,18 +19,14 @@ export async function saveQuizResult(req, res) {
   }
 }
 
-// 🟡 2. Användarens statistik hämta
 export async function getUserQuizStats(req, res) {
   try {
-   const authHeader = req.headers.authorization;
-   if (!authHeader) return res.status(401).json({ message: "Ingen token" });
-
-    const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback_secret");
+    const { userId } = req.params;
+    if (!userId) return res.status(400).json({ message: "User ID krävs" });
 
     const [results] = await db.query(
       "SELECT correct_answers, wrong_answers, created_at FROM quiz_results WHERE user_id = ? ORDER BY created_at DESC",
-      [decoded.userId]
+      [userId]
     );
 
     res.json(results);
@@ -44,4 +35,3 @@ export async function getUserQuizStats(req, res) {
     res.status(500).json({ message: "Serverfel vid hämtning av statistik" });
   }
 }
-

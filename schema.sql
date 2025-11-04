@@ -18,6 +18,7 @@ VALUES
 CREATE TABLE results (
     id SERIAL PRIMARY KEY,
     user_id INT,
+    quiz_type VARCHAR(50), 
     score INT,
     total INT,
     date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

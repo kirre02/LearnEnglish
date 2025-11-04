@@ -22,7 +22,7 @@
       </div>
 
       <!-- Practice Content -->
-      <div v-else class="practice-content">
+      <div v-else class="practice-content" v-if="!practiceFinished">
         <div class="question-section">
           <button @click="playQuestionAudio" class="audio-btn-large" :disabled="audioLoading">
             <span v-if="audioLoading">⏳</span>
@@ -50,7 +50,7 @@
           </button>
         </div>
 
-        <div v-if="answered" class="feedback-section">
+        <div v-if="answered && !practiceFinished" class="feedback-section">
           <div class="feedback-bubble" :class="feedbackClass">
             <div class="feedback-emoji">{{ feedbackEmoji }}</div>
             <div class="feedback-text">{{ feedbackText }}</div>
@@ -61,6 +61,27 @@
               @keydown.enter.space="nextQuestion"
               tabindex="0">
               {{ isLastQuestion ? 'Avsluta övning' : 'Nästa fråga' }} →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="practiceFinished" class="results-container">
+        <div class="results-bubble" :class="resultsClass">
+          <div class="results-emoji">{{ resultsEmoji }}</div>
+          <h2>{{ resultsTitle }}</h2>
+          <p class="results-score">{{ score }} av {{ questions.length }} rätt!</p>
+          <p class="results-message">{{ resultsMessage }}</p>
+
+          <div class="results-actions">
+            <button @click="restartQuiz" class="action-btn play-again-btn">
+              🎮 Spela igen
+            </button>
+            <button @click="goToAllResults" class="action-btn results-btn">
+              📊 Se alla resultat
+            </button>
+            <button @click="goToDashboard" class="action-btn dashboard-btn">
+              🏠 Till dashboard
             </button>
           </div>
         </div>
@@ -83,6 +104,8 @@ export default {
       questions: [],
       loading: true,
       allWords: [], // Lagra alla ord från databasen
+      practiceFinished: false,
+
       
       // DATA FÖR AUTO-SCROLL
       autoScrollSpeed: 4,
@@ -112,6 +135,30 @@ export default {
       return this.isCorrect 
         ? 'Rätt svar! Bra jobbat!' 
         : `Rätt svar är: ${this.currentQuestion.options.find(opt => opt.correct).text}`;
+    },
+    resultsClass() {
+      const percentage = (this.score / this.questions.length) * 100;
+      if (percentage >= 80) return 'excellent';
+      if (percentage >= 60) return 'good';
+      return 'ok';
+    },
+    resultsEmoji() {
+      const percentage = (this.score / this.questions.length) * 100;
+      if (percentage >= 80) return '🏆';
+      if (percentage >= 60) return '⭐';
+      return '👍';
+    },
+    resultsTitle() {
+      const percentage = (this.score / this.questions.length) * 100;
+      if (percentage >= 80) return 'Fantastiskt!';
+      if (percentage >= 60) return 'Bra jobbat!';
+      return 'Bra försök!';
+    },
+    resultsMessage() {
+      const percentage = (this.score / this.questions.length) * 100;
+      if (percentage >= 80) return 'Du är en riktig engelskexpert!';
+      if (percentage >= 60) return 'Du kan mycket engelska!';
+      return 'Fortsätt öva, du blir bättre!';
     },
     isCorrect() {
       return this.selectedAnswer?.correct === true;
@@ -420,10 +467,39 @@ export default {
       }
     },
 
-    finishPractice() {
-      this.savePracticeProgress();
-      alert(`Övning avslutad! 🎉\nDu fick ${this.score} av ${this.questions.length} rätt!`);
-      this.$router.push('/dashboard');
+  // finishPractice() {
+    // this.savePracticeProgress();
+      //alert(`Övning avslutad! 🎉\nDu fick ${this.score} av ${this.questions.length} rätt!`);
+      //this.$router.push('/dashboard');
+    //},
+     finishPractice() {
+    this.practiceFinished = true;
+    this.savePracticeProgress();
+
+    try {
+      const resultData = {
+        userId: 1,
+        score: this.score,
+        total: this.questions.length
+      };
+      fetch('http://localhost:9001/api/results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resultData)
+      }).then(res => {
+        if (res.ok) console.log("Result saved to DB ✅");
+      });
+    } catch (err) {
+      console.error("Error saving result:", err);
+    }
+  },
+
+    saveQuizStateForResults() {
+      const quizState = {
+        score: this.score,
+        questionsLength: this.questions.length
+      };
+      localStorage.setItem('lastQuizState', JSON.stringify(quizState));
     },
 
     savePracticeProgress() {
@@ -432,11 +508,17 @@ export default {
       progress.learnedWords = Math.min(125, (progress.learnedWords || 0) + this.score);
       localStorage.setItem('learningProgress', JSON.stringify(progress));
     },
+    goToAllResults() {
+    this.$router.push('/quiz-results');
+  },
+   goToDashboard() {
+    this.$router.push('/dashboard');},
 
     goBack() {
       this.$router.back();
     }
-  },
+  }
+  ,
   beforeUnmount() {
     this.stopAutoScroll();
   }
@@ -746,5 +828,113 @@ export default {
   .options-container {
     min-height: 300px;
   }
+
 }
+
+ /* === RESULT SECTION (renkli ve dinamik) === */
+.results-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  margin-top: 20px;
+}
+
+.results-bubble {
+  color: white;
+  padding: 50px 40px;
+  border-radius: 30px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  width: 90%;
+  animation: fadeInUp 0.7s ease-out;
+}
+
+/* 🔥 Renk temaları */
+/* 🔥 Renk temaları */
+.results-bubble.excellent {
+  background: linear-gradient(135deg, #42E695, #3BB2B8);
+}
+
+.results-bubble.good {
+  background: linear-gradient(135deg, #FAD961, #F76B1C);
+}
+
+.results-bubble.ok {
+  background: linear-gradient(135deg, #FF9A9E, #FAD0C4);
+}
+
+
+.results-emoji {
+  font-size: 3.5em;
+  margin-bottom: 15px;
+}
+
+.results-bubble h2 {
+  font-size: 2em;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.results-score {
+  font-weight: bold;
+  font-size: 1.3em;
+  margin-bottom: 10px;
+}
+
+.results-message {
+  font-size: 1.1em;
+  opacity: 0.95;
+  margin-bottom: 30px;
+}
+
+.results-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  border: none;
+  padding: 12px 25px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  color: white;
+  transition: all 0.3s ease;
+  font-size: 1em;
+}
+
+.play-again-btn {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.results-btn {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dashboard-btn {
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+
+.action-btn:hover {
+  opacity: 0.85;
+  transform: scale(1.05);
+}
+
+@keyframes fadeInUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+
 </style>

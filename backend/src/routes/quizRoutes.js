@@ -4,6 +4,6 @@ import { saveQuizResult, getUserQuizStats } from "../controllers/quizResultsCont
 const router = express.Router();
 
 router.post("/quiz-results", saveQuizResult);
-router.get("/quiz-results", getUserQuizStats);
+router.get("/quiz-results/:userId", getUserQuizStats);
 
 export default router;

@@ -36,12 +36,10 @@ const quizResults = ref([]);
 
 onMounted(async () => {
   try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("Ingen token hittades");
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user?.id) throw new Error("Ingen användar-ID hittades");
 
-    const res = await fetch("http://localhost:9001/api/quiz/quiz-results", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await fetch(`http://localhost:9001/api/quiz/quiz-results/${user.id}`);
 
     if (!res.ok) throw new Error("Kunde inte hämta quizresultat");
 
