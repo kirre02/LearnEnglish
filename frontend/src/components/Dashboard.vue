@@ -89,16 +89,14 @@
           v-for="(category, index) in categories" 
           :key="category.id" 
           :class="['explore-card', 'card-' + (index + 1)]" 
-          @click="navigateToCategory(category.name)"
-        >
+          @click="navigateToCategory(category.name)">
           <div class="card-emoji">{{ category.emoji }}</div>
           <div class="card-wave"></div>
           <h3>{{ category.name }}</h3>
           <p>{{ category.description }}</p>
           <div class="card-sparkle">✨</div>
         </div>
-        
-      </div>
+        </div>
     </div>
 
     <div class="encouragement-footer">
@@ -134,6 +132,7 @@ export default {
   },
   computed: {
     progressPercentage() {
+      // 125 är det totala antalet ord i alla kategorier (ungefär 6*20)
       return Math.round((this.learnedWords / 125) * 100);
     },
     progressStyle() {
@@ -149,6 +148,7 @@ export default {
     this.loadProgress();
   },
   methods: {
+    // FIX: KOMBINERAD METODS-SEKTION
     loadProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
       this.learnedWords = progress.learnedWords || 0;
@@ -167,24 +167,38 @@ export default {
       this.$router.push('/');
     },
     navigateToCategory(categoryName) {
-      // Navigerar till en dynamisk route baserat på kategorinamn
-      this.$router.push(`/category/${categoryName}`);
+      // Använd Ali's routes istället för practice routes
+      const routes = {
+        'Färger': '/färger',
+        'Djur': '/djur', 
+        'Siffror': '/siffror',
+        'Mat': '/mat',
+        'Familj': '/familj',
+        'Vardagsord': '/vardagsord'
+      };
+      
+      if (routes[categoryName]) {
+        this.$router.push(routes[categoryName]);
+      } else {
+        alert(`Öppnar ${categoryName} - kommer snart!`);
+      }
     },
     startQuickPractice(type) {
       this.$router.push(`/practice/${type}`);
     },
     startQuiz() {
-      this.$router.push('/practice/quiz');
+      this.$router.push('/practice/quiz');  // Behåll denna från main
     }
+    // Slut FIX methods
   }
 }
 </script>
 
 ---
 
-## 🎨 Stil (CSS)
+## 🎨 Stil (CSS) - Oförändrad
 
-> **Obs:** CSS-koden nedan är oförändrad, men jag inkluderar den för att du ska ha allt samlat. **Den är nödvändig** för att korten (`card-1` till `card-6`) ska få sina unika färger, vilket nu hanteras av `:class="['explore-card', 'card-' + (index + 1)]"` i HTML-mallen.
+> **Obs:** CSS-koden nedan är oförändrad från din ursprungliga text, och är nödvändig för designen.
 
 ```css
 <style scoped>
