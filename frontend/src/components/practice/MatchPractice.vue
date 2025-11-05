@@ -10,13 +10,22 @@
         </div>
       </div>
 
+      <!-- Laddningsskärm -->
+      <div v-if="loading" class="loading-container">
+        <div class="loading-bubble">
+          <div class="loading-emoji">⏳</div>
+          <h3>Hämtar ord...</h3>
+          <p>Var god vänta medan vi förbereder ditt matchningsspel!</p>
+        </div>
+      </div>
+
       <!-- Game Instructions -->
-      <div class="instructions">
+      <div v-else class="instructions">
         <p>💡 <strong>Dra</strong> orden från ena kolumnen till den andra för att matcha rätt par!</p>
       </div>
 
       <!-- Matching Game -->
-      <div class="matching-game">
+      <div v-if="!loading" class="matching-game">
         <div class="columns-container">
           <!-- Swedish Column -->
           <div class="column swedish-column">
@@ -85,7 +94,7 @@
       </div>
 
       <!-- Current Matches -->
-      <div v-if="!allMatched" class="current-matches">
+      <div v-if="!loading && !allMatched" class="current-matches">
         <p>Matchade: {{ matchedCount }} av {{ wordPairs.length }}</p>
         <div class="matches-progress">
           <div class="matches-fill" :style="matchesProgressStyle"></div>
@@ -98,44 +107,17 @@
 <script>
 export default {
   name: 'MatchPractice',
-  data() {
-    // Fisher-Yates shuffle function
-    const shuffleArray = (array) => {
-      const shuffled = [...array];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      return shuffled;
-    };
-
-    // All word pairs
-    const allWordPairs = [
-      { swedish: "Hej", english: "Hello" },
-      { swedish: "Tack", english: "Thank you" },
-      { swedish: "Äpple", english: "Apple" },
-      { swedish: "Vatten", english: "Water" },
-      { swedish: "Bok", english: "Book" },
-      { swedish: "Hus", english: "House" },
-      { swedish: "Katt", english: "Cat" },
-      { swedish: "Hund", english: "Dog" },
-      { swedish: "Skola", english: "School" },
-      { swedish: "Bil", english: "Car" },
-      { swedish: "Familj", english: "Family" },
-      { swedish: "Mat", english: "Food" }
-    ];
-
-    return {
+  data() {    return {
       score: 0,
       time: 0,
       timer: null,
       draggedWord: null,
       draggedType: null,
-      wordPairs: shuffleArray(allWordPairs).slice(0, 8), // Random 8 pairs
+      wordPairs: [],
       swedishWords: [],
       englishWords: [],
-      shuffleArray: shuffleArray,
-      allWordPairs: allWordPairs
+      loading: true,
+      allWords: [] // Lagra alla ord från databasen
     }
   },
   computed: {
@@ -157,13 +139,76 @@ export default {
     }
   },
   methods: {
+    // Fisher-Yates shuffle function
+    shuffleArray(array) {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    },
+
+    async loadWordsFromDatabase() {
+      this.loading = true;
+      try {
+        // Hämta alla ord från databasen
+        const response = await fetch('http://localhost:9001/api/words');
+        if (!response.ok) throw new Error('Kunde inte hämta ord från databasen');
+        
+        this.allWords = await response.json();
+        
+        if (this.allWords.length === 0) {
+          throw new Error('Inga ord hittades i databasen');
+        }
+
+        // Initiera spelet med databasorden
+        this.initGame();
+
+      } catch (error) {
+        console.error('Error loading words from database:', error);
+        this.useFallbackWords();
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    useFallbackWords() {
+      const fallbackWordPairs = [
+        { swedish: "Hej", english: "Hello" },
+        { swedish: "Tack", english: "Thank you" },
+        { swedish: "Äpple", english: "Apple" },
+        { swedish: "Vatten", english: "Water" },
+        { swedish: "Bok", english: "Book" },
+        { swedish: "Hus", english: "House" },
+        { swedish: "Katt", english: "Cat" },
+        { swedish: "Hund", english: "Dog" },
+        { swedish: "Skola", english: "School" },
+        { swedish: "Bil", english: "Car" },
+        { swedish: "Familj", english: "Family" },
+        { swedish: "Mat", english: "Food" }
+      ];
+
+      // Spara fallback-orden så vi kan använda dem i initGame
+      this.allWords = fallbackWordPairs.map(pair => ({
+        swedish: pair.swedish,
+        english: pair.english
+      }));
+
+      this.initGame();
+      console.log('Använder fallback-ord för matchningsspel');
+    },
+
     initGame() {
       // Reset game state
       this.score = 0;
       this.time = 0;
       
-      // Get new random word pairs
-      this.wordPairs = this.shuffleArray([...this.allWordPairs]).slice(0, 8);
+      // Get random word pairs from database (8 pairs)
+      this.wordPairs = this.shuffleArray([...this.allWords]).slice(0, 8).map(word => ({
+        swedish: word.swedish,
+        english: word.english
+      }));
       
       // Prepare words for each column
       this.swedishWords = this.wordPairs.map(pair => ({
@@ -183,6 +228,7 @@ export default {
       // Start timer
       this.startTimer();
     },
+
     startTimer() {
       if (this.timer) {
         clearInterval(this.timer);
@@ -191,6 +237,7 @@ export default {
         this.time++;
       }, 1000);
     },
+
     dragStart(event, word, type) {
       if (word.matched) {
         event.preventDefault();
@@ -201,10 +248,12 @@ export default {
       event.dataTransfer.setData('text/plain', word.text);
       event.dataTransfer.effectAllowed = 'move';
     },
+
     dragOver(event) {
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
     },
+
     drop(event, targetWord) {
       event.preventDefault();
       
@@ -246,27 +295,31 @@ export default {
       this.draggedWord = null;
       this.draggedType = null;
     },
+
     dragEnd() {
       this.draggedWord = null;
       this.draggedType = null;
     },
+
     restartGame() {
       clearInterval(this.timer);
       this.initGame();
     },
+
     saveProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
       progress.matchingPractice = (progress.matchingPractice || 0) + 1;
       progress.learnedWords = Math.min(125, (progress.learnedWords || 0) + this.wordPairs.length);
       localStorage.setItem('learningProgress', JSON.stringify(progress));
     },
+
     goBack() {
       clearInterval(this.timer);
       this.$router.back();
     }
   },
-  mounted() {
-    this.initGame();
+  async mounted() {
+    await this.loadWordsFromDatabase();
   },
   beforeUnmount() {
     if (this.timer) {
@@ -277,6 +330,45 @@ export default {
 </script>
 
 <style scoped>
+/* Lägg till laddningsstilar */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.loading-bubble {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  color: white;
+  padding: 40px;
+  border-radius: 25px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3);
+}
+
+.loading-emoji {
+  font-size: 4em;
+  margin-bottom: 20px;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-bubble h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.5em;
+}
+
+.loading-bubble p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* Behåll alla ursprungliga CSS-stilar */
 .practice-page {
   min-height: 100vh;
   background-color: #f7f3ed;
