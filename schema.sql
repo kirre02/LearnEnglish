@@ -31,7 +31,7 @@ INSERT INTO results (user_id, score, total) VALUES
 (1, 6, 10),
 (2, 9, 10),
 (1, 7, 10);
-=======
+
 CREATE TABLE IF NOT EXISTS words (
     id INT AUTO_INCREMENT PRIMARY KEY,
     category VARCHAR(50),
@@ -41,4 +41,4 @@ CREATE TABLE IF NOT EXISTS words (
     wrong2 VARCHAR(100) NOT NULL,
     wrong3 VARCHAR(100) NOT NULL
 );
->>>>>>> 5-audio-support
+

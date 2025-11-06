@@ -16,8 +16,7 @@
           <div class="sparkles">✨✨✨</div>
         </div>
 
-        <!-- Ersatt den gamla user-info-bubble med den nya komponenten -->
-        <UserInfoBubble 
+        <UserInfoBubble
           :learnedWords="learnedWords" 
           @logout="handleLogout" 
           @show-results="goToResults"
