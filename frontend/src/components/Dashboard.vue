@@ -138,7 +138,7 @@ export default {
         { id: 4, name: 'Mat', emoji: '🍎', description: 'Gott och nyttigt' },
         { id: 5, name: 'Familj', emoji: '👨‍👩‍👧‍👦', description: 'Mamma, pappa & alla andra' },
         { id: 6, name: 'Vardagsord', emoji: '💬', description: 'Ord för vardagen' }
-      ]
+      ],
     }
   },
   computed: {
@@ -151,12 +151,42 @@ export default {
       };
     }
   },
-  mounted() {
-    if (!localStorage.getItem('token')) {
-      this.$router.push('/');
+  async mounted() {
+  try {
+    const userId = 1;
+    const res = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
+    const data = await res.json();
+
+    // 🔹 En eski (ilk) sonucu kaldır
+    if (data.length > 0) {
+      data.shift();
     }
-    this.loadProgress();
-  },
+
+    // 🔹 Her sonucu quizdeki toplam soru sayısına göre orana çevir
+    this.quizResults = data.map(r => ({
+      date: new Date(r.created_at).toLocaleDateString("sv-SE"),
+      correct: r.correct_answers,
+      total: r.correct_answers + r.wrong_answers,
+      percent: Math.round((r.correct_answers / (r.correct_answers + r.wrong_answers)) * 100)
+    }));
+
+    // 🔹 Grafiğe uygun hale getir
+    this.chartData = {
+      labels: this.quizResults.map(r => r.date),
+      datasets: [
+        {
+          label: "Quizresultat (%)",
+          data: this.quizResults.map(r => r.percent),
+          backgroundColor: ["#FF9A8B", "#4ECDC4", "#C77DFF", "#FFD93D", "#FF6B6B"]
+        }
+      ]
+    };
+
+  } catch (err) {
+    console.error("❌ Fel vid hämtning av quizresultat:", err);
+  }
+}
+,
   methods: {
     loadProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');

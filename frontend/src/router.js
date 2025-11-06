@@ -41,7 +41,26 @@ const routes = [
     name: 'Practice',
     component: PracticeLayout,
     props: true
-  }
+  }, 
+  {
+  path: '/practice/listen/results',
+  component: () => import('./components/practice/ListenPractice.vue')   
+  },
+{
+  path: '/practice/match/results',
+  component: () => import('./components/practice/MatchPractice.vue')
+},
+{
+  path: '/practice/speak/results',
+  component: () => import('./components/practice/SpeakPractice.vue')
+},
+{
+  path: '/practice/quiz/results',
+    alias: '/quiz/results',  // 👈 ekle
+
+  component: () => import('./components/practice/Quiz.vue')
+}
+
 ]
 
 const router = createRouter({

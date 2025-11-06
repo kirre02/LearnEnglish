@@ -2,16 +2,48 @@
   <div class="practice-page match-practice">
     <div class="practice-container">
       <!-- Header -->
-      <div class="practice-header">
+      <div v-if="!isResultsMode" class="practice-header">
         <button @click="goBack" class="back-btn">← Tillbaka</button>
         <div class="progress-info">
           <h2>🔄 Matcha orden!</h2>
           <p class="game-stats">Poäng: <strong>{{ score }}</strong> | Tid: <strong>{{ formattedTime }}</strong></p>
         </div>
       </div>
+<!-- 📊 RESULT MODE (visas när man går till /practice/match/results) -->
+<div v-if="isResultsMode" class="results-page">
+  <h2 class="results-title">🧩 Dina matchningsresultat</h2>
+  <h3 style="color:#555; margin-bottom:20px;">
+  Här ser du dina tidigare poäng och tider ⏱️
+  </h3>
+  <div v-if="latestScore && total" class="latest-result">
+    <p>Senaste resultat: <strong>{{ latestScore }}/{{ total }}</strong></p>
+    <p>Procent: <strong>{{ Math.round((latestScore / total) * 100) }}%</strong></p>
+  </div>  
+  
+  <table v-if="results.length" class="results-table">
+    <thead>
+      <tr>
+        <th>Datum</th>
+        <th>Poäng</th>
+        <th>Tid</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="(r, index) in results" :key="index">
+        <td>{{ new Date(r.date).toLocaleDateString('sv-SE') }}</td>
+        <td>{{ r.score }}</td>
+        <td>{{ formatDuration(r.duration_seconds) }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p v-else class="no-results">Inga resultat ännu. Gör en matchningsövning först 🧩</p>
+
+  <button @click="goBack" class="action-btn dashboard-btn">⬅️ Tillbaka</button>
+</div>
 
       <!-- Laddningsskärm -->
-      <div v-if="loading" class="loading-container">
+      <div v-if="loading && !isResultsMode" class="loading-container">
         <div class="loading-bubble">
           <div class="loading-emoji">⏳</div>
           <h3>Hämtar ord...</h3>
@@ -20,12 +52,12 @@
       </div>
 
       <!-- Game Instructions -->
-      <div v-else class="instructions">
+      <div v-else-if="!isResultsMode" class="instructions">
         <p>💡 <strong>Dra</strong> orden från ena kolumnen till den andra för att matcha rätt par!</p>
       </div>
 
       <!-- Matching Game -->
-      <div v-if="!loading" class="matching-game">
+      <div v-if="!loading && !isResultsMode && !practiceFinished " class="matching-game">
         <div class="columns-container">
           <!-- Swedish Column -->
           <div class="column swedish-column">
@@ -73,9 +105,9 @@
             </div>
           </div>
         </div>
-
-        <!-- Completion Message -->
-        <div v-if="allMatched" class="completion-message">
+      </div>
+          <!-- Completion Message -->
+<div v-if="!isResultsMode && practiceFinished" class="completion-message">
           <div class="success-bubble">
             <div class="success-emoji">🎉</div>
             <h3>Fantastiskt jobbat! 🏆</h3>
@@ -88,10 +120,12 @@
               <button @click="goBack" class="back-btn">
                 🏠 Tillbaka till dashboard
               </button>
+              <button @click="goToAllResults" class="action-btn results-btn">
+                📊 Se alla resultat
+              </button>
             </div>
           </div>
         </div>
-      </div>
 
       <!-- Current Matches -->
       <div v-if="!loading && !allMatched" class="current-matches">
@@ -116,15 +150,25 @@ export default {
       wordPairs: [],
       swedishWords: [],
       englishWords: [],
-      loading: true,
-      allWords: [] // Lagra alla ord från databasen
+      loading: false,
+      allWords: [], // Lagra alla ord från databasen
+      results: [],
+      latestScore: null, // 👈 ekledik
+    total: null,       // 👈 ekledik
+        practiceFinished: false // ✅ eksik olan bu
+
     }
   },
   computed: {
+    
     formattedTime() {
       const minutes = Math.floor(this.time / 60);
       const seconds = this.time % 60;
       return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    },
+  
+     isResultsMode() {
+      return this.$route.path.includes("results");
     },
     allMatched() {
       return this.swedishWords.every(word => word.matched) && 
@@ -149,6 +193,14 @@ export default {
       return shuffled;
     },
 
+    formatDuration(seconds) {
+  if (!seconds && seconds !== 0) return "-";
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+},
+
+
     async loadWordsFromDatabase() {
       this.loading = true;
       try {
@@ -171,6 +223,35 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+
+    async finishPractice() {
+        clearInterval(this.timer);
+
+
+  const resultData = {
+    userId: 1,
+    score: this.score,
+    total: this.wordPairs.length,
+    duration_seconds: this.time,
+    quiz_type: "match"    
+  };
+
+  try {
+    const res = await fetch("http://localhost:9001/api/results", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(resultData)
+    });
+    if (res.ok) console.log("Result saved ✅");
+  } catch (err) {
+    console.error("Error saving match result:", err);
+  }
+},
+goToAllResults() {
+    if (this.timer) clearInterval(this.timer); // ✅ sonuç sayfasına giderken durdur
+
+      this.$router.push("/practice/match/results");
     },
 
     useFallbackWords() {
@@ -199,6 +280,25 @@ export default {
       console.log('Använder fallback-ord för matchningsspel');
     },
 
+    async loadPastResults() {
+    this.loading = true;
+    try {
+      const userId = 1;
+        const response = await fetch(`http://localhost:9001/api/results/${userId}`);
+        if (!response.ok) throw new Error("Kunde inte hämta resultat");
+        const data = await response.json();
+        console.log("RESULTS FROM BACKEND:", data);
+        this.results = data
+          .filter(r => !r.quiz_type || r.quiz_type === "match")
+          .sort((a, b) => new Date(b.date) - new Date(a.date));
+      } catch (err) {
+        console.error("❌ Fel vid hämtning av resultat:", err);
+        this.results = [];
+      } finally {
+        this.loading = false;
+      }
+    },
+
     initGame() {
       // Reset game state
       this.score = 0;
@@ -224,9 +324,10 @@ export default {
         matched: false,
         id: Math.random().toString(36).substr(2, 9)
       })));
-      
+      if (!this.isResultsMode) {
+
       // Start timer
-      this.startTimer();
+      this.startTimer();}
     },
 
     startTimer() {
@@ -254,7 +355,7 @@ export default {
       event.dataTransfer.dropEffect = 'move';
     },
 
-    drop(event, targetWord) {
+   async drop(event, targetWord) {
       event.preventDefault();
       
       if (!this.draggedWord || this.draggedWord.matched || targetWord.matched) {
@@ -285,7 +386,11 @@ export default {
         // Check if game is complete
         if (this.allMatched) {
           clearInterval(this.timer);
-          this.saveProgress();
+            if (this.time < 30) this.score += 20; // bitirme bonusu
+
+           this.practiceFinished = true;
+            await this.finishPractice();
+         // this.saveProgress();
         }
       } else {
         // Incorrect match - small penalty
@@ -303,6 +408,8 @@ export default {
 
     restartGame() {
       clearInterval(this.timer);
+        this.practiceFinished = false; // ✅ ekle
+
       this.initGame();
     },
 
@@ -318,14 +425,55 @@ export default {
       this.$router.back();
     }
   },
-  async mounted() {
+  //async mounted() {
+    //await this.loadWordsFromDatabase();
+  //},
+ async mounted() {
+    if (this.timer) clearInterval(this.timer); // ✅ timer reset eklendi
+
+
+  if (this.isResultsMode) {
+    const latestScore = this.$route.query.latestScore;
+    const total = this.$route.query.total;
+
+    // Her zaman geçmiş sonuçları yükle
+    if (typeof this.loadPastResults === "function") {
+      await this.loadPastResults();
+    }
+
+    // Yeni sonuç varsa en üste ekle
+    if (latestScore && total) {
+      this.results.unshift({
+        date: new Date(),
+        score: Number(latestScore),
+        total: Number(total)
+      });
+    }
+  } else {
     await this.loadWordsFromDatabase();
-  },
+  }
+}
+,watch: {
+  // route veya query değiştiğinde çalışır
+  '$route.path'(newPath) {
+    if (this.timer) clearInterval(this.timer); // her geçişte önce bir durdur
+    this.time = 0;
+
+    if (!newPath.includes('results')) {
+      // pratik sayfasına döndüysek tekrar başlat
+      this.startTimer();
+    }
+  }
+},
+
+
+
   beforeUnmount() {
     if (this.timer) {
       clearInterval(this.timer);
     }
   }
+  ,
 }
 </script>
 
@@ -530,33 +678,59 @@ export default {
 }
 
 .success-bubble {
-  background: linear-gradient(135deg, #FFD700, #FF8E00);
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
   color: white;
   padding: 40px;
   border-radius: 25px;
   text-align: center;
   max-width: 400px;
   animation: bounceIn 0.8s ease-out;
+  box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3);
 }
 
+.play-again-btn,
+.back-btn,
+.action-btn.results-btn {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  border-radius: 20px;
+  padding: 12px 25px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;              /* 🟢 ikon + yazı hizalama */
+  align-items: center;        /* dikey ortalama */
+  justify-content: center;    /* 🟢 yatay ortalama */
+  gap: 8px;                   /* ikon ve metin arası mesafe */
+  text-align: center;       
+}
+
+.play-again-btn:hover,
+.back-btn:hover,
+.action-btn.results-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.08);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+}
+
+/* Başlık ve ikon uyumu */
 .success-emoji {
-  font-size: 4em;
+  font-size: 3.5em;
   margin-bottom: 15px;
 }
 
 .success-bubble h3 {
-  margin: 0 0 10px 0;
-  font-size: 1.8em;
-}
-
-.success-bubble p {
-  margin: 0 0 15px 0;
-  font-size: 1.1em;
+  font-size: 2em;
+  margin-bottom: 10px;
+  font-weight: bold;
 }
 
 .final-score {
-  font-size: 1.3em !important;
+  font-size: 1.3em;
   font-weight: bold;
+  margin-top: 5px;
 }
 
 .completion-actions {
@@ -564,26 +738,9 @@ export default {
   flex-direction: column;
   gap: 10px;
   margin-top: 20px;
+  
 }
 
-.play-again-btn {
-  background: rgba(255,255,255,0.2);
-  border: 2px solid white;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 1em;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-}
-
-.play-again-btn:hover {
-  background: white;
-  color: #FF8E00;
-  transform: scale(1.05);
-}
 
 .current-matches {
   background: white;
@@ -611,6 +768,47 @@ export default {
   height: 100%;
   background: linear-gradient(135deg, #FF9A8B, #FF6A88);
   transition: width 0.5s ease;
+}
+
+.results-page {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.results-title {
+  font-size: 1.8em;
+  margin-bottom: 25px;
+}
+
+.results-table {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto 30px;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.results-table th, .results-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.results-table th {
+  background: #4ECDC4;
+  color: white;
+}
+
+.results-table tr:last-child td {
+  border-bottom: none;
+}
+
+.no-results {
+  color: #666;
+  font-style: italic;
+  margin-bottom: 20px;
 }
 
 @keyframes fadeIn {
