@@ -19,7 +19,7 @@
         <UserInfoBubble
           :learnedWords="learnedWords" 
           @logout="handleLogout"
-          @show-settings="goToProfile" />
+          @show-profile="goToProfile" />
       </div>
 
     </div>

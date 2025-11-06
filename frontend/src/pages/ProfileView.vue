@@ -1,60 +1,67 @@
 <template>
   <div class="profile-page">
-    <div class="profile-card">
-      <div class="profile-header">
-        <div class="avatar-placeholder">👤</div>
-        <div class="user-info">
-          <h3>{{ currentUser.name || 'Okänd användare' }}</h3>
-          <p>{{ currentUser.email || 'Ingen e-post angiven' }}</p>
+    <div class="profile-card-wrapper">
+      <!-- Flytande knapp -->
+      <button class="back-dashboard" @click="$router.push('/dashboard')">
+        ← Till Dashboard
+      </button>
+
+      <div class="profile-card">
+        <div class="profile-header">
+          <div class="avatar-placeholder">👤</div>
+          <div class="user-info">
+            <h3>{{ currentUser.name || 'Okänd användare' }}</h3>
+            <p>{{ currentUser.email || 'Ingen e-post angiven' }}</p>
+          </div>
         </div>
+
+        <hr class="divider top-divider" />
+
+        <h2 class="title">Redigera profil</h2>
+        <p class="subtitle">Uppdatera dina uppgifter nedan</p>
+
+        <form @submit.prevent="saveProfile" class="profile-form">
+          <div class="form-group">
+            <label for="name">Namn</label>
+            <input v-model="form.name" id="name" type="text" required />
+          </div>
+
+          <div class="form-group">
+            <label for="email">E-post</label>
+            <input v-model="form.email" id="email" type="email" required />
+          </div>
+
+          <hr class="divider" />
+
+          <div class="form-group">
+            <label for="password">Nytt lösenord</label>
+            <input
+                v-model="form.password"
+                id="password"
+                type="password"
+                placeholder="Lämna tomt om du inte vill ändra"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="confirm">Bekräfta lösenord</label>
+            <input
+                v-model="form.confirmPassword"
+                id="confirm"
+                type="password"
+                placeholder="Lämna tomt om du inte vill ändra"
+            />
+          </div>
+
+          <button type="submit" class="save-btn">Spara ändringar</button>
+        </form>
+
+        <transition name="fade">
+          <div v-if="message" :class="['message', messageType]">
+            {{ message }}
+          </div>
+        </transition>
       </div>
-
-      <hr class="divider top-divider" />
-
-      <h2 class="title">Redigera profil</h2>
-      <p class="subtitle">Uppdatera dina uppgifter nedan</p>
-
-      <form @submit.prevent="saveProfile" class="profile-form">
-        <div class="form-group">
-          <label for="name">Namn</label>
-          <input v-model="form.name" id="name" type="text" required />
-        </div>
-
-        <div class="form-group">
-          <label for="email">E-post</label>
-          <input v-model="form.email" id="email" type="email" required />
-        </div>
-
-        <hr class="divider" />
-
-        <div class="form-group">
-          <label for="password">Nytt lösenord</label>
-          <input
-              v-model="form.password"
-              id="password"
-              type="password"
-              placeholder="Lämna tomt om du inte vill ändra"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="confirm">Bekräfta lösenord</label>
-          <input
-              v-model="form.confirmPassword"
-              id="confirm"
-              type="password"
-              placeholder="Lämna tomt om du inte vill ändra"
-          />
-        </div>
-
-        <button type="submit" class="save-btn">Spara ändringar</button>
-      </form>
-
-      <transition name="fade">
-        <div v-if="message" :class="['message', messageType]">
-          {{ message }}
-        </div>
-      </transition>
     </div>
   </div>
 </template>
@@ -110,25 +117,21 @@ export default {
 
         const data = await response.json();
 
-        // Uppdatera localStorage och currentUser
         localStorage.setItem("user", JSON.stringify({
           id: data.user.id,
           name: data.user.name,
           email: data.user.email,
         }));
+
         this.currentUser = data.user;
 
-        // Rensa lösenordsfält
+        this.showMessage("Ändringar sparade!", "success");
         this.form.password = "";
         this.form.confirmPassword = "";
 
-        // Visa meddelande
-        this.showMessage("Ändringar sparade!", "success");
-
-        // Navigera till dashboard
-        this.$router.push("/dashboard");
-
+        this.$router.push('/dashboard');
       } catch (err) {
+        console.error(err);
         this.showMessage("Kunde inte spara ändringar.", "error");
       }
     },
@@ -150,6 +153,35 @@ export default {
   min-height: 100vh;
   background: #f7f9fb;
   padding: 40px 20px;
+  position: relative;
+}
+
+.profile-card-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+}
+
+/* Flytande knapp flyttad mer åt vänster och färg matchar save-btn */
+.back-dashboard {
+  position: absolute;
+  top: -30px;
+  left: -140px; /* Flyttad ännu mer åt vänster */
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #ff6b6b, #ff8e53); /* Samma som save-knappen */
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  box-shadow: 0 5px 15px rgba(255, 107, 107, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  z-index: 10;
+}
+
+.back-dashboard:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(255, 107, 107, 0.35);
 }
 
 .profile-card {
@@ -157,7 +189,6 @@ export default {
   border-radius: 30px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
   padding: 40px 50px;
-  max-width: 480px;
   width: 100%;
   transition: transform 0.3s ease;
 }
@@ -299,5 +330,18 @@ input:focus {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* Responsiv design */
+@media (max-width: 500px) {
+  .back-dashboard {
+    top: -25px;
+    left: -80px;
+    padding: 8px 12px;
+    font-size: 0.9em;
+  }
+  .profile-card {
+    padding: 30px 25px;
+  }
 }
 </style>
