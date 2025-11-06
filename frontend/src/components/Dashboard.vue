@@ -14,20 +14,11 @@
           <p>Vad kul att du är här! Vad vill du göra idag?</p>
           <div class="sparkles">✨✨✨</div>
         </div>
-        
-        <div class="user-info-bubble">
-          <div class="user-avatar">😊</div>
-          <div class="user-details">
-            <div class="word-count">
-              <span class="count">{{ learnedWords }}</span>
-              <span class="label">ord lärt!</span>
-            </div>
-            <button @click="handleLogout" class="logout-btn">
-              <span class="logout-text">Logga ut</span>
-              <span class="logout-emoji">👋</span>
-            </button>
-          </div>
-        </div>
+
+        <UserInfoBubble
+          :learnedWords="learnedWords"
+          @logout="handleLogout"
+          @show-profile="goToProfile" />
       </div>
     </div>
 
@@ -83,12 +74,12 @@
         <h2>Vad vill du utforska idag? 🗺️</h2>
         <div class="header-decoration">🎨🌟🎯</div>
       </div>
-      
+
       <div class="explore-cards">
-        <div 
-          v-for="(category, index) in categories" 
-          :key="category.id" 
-          :class="['explore-card', 'card-' + (index + 1)]" 
+        <div
+          v-for="(category, index) in categories"
+          :key="category.id"
+          :class="['explore-card', 'card-' + (index + 1)]"
           @click="navigateToCategory(category.name)">
           <div class="card-emoji">{{ category.emoji }}</div>
           <div class="card-wave"></div>
@@ -113,8 +104,11 @@
 </template>
 
 <script>
+import UserInfoBubble from './UserInfoBubble.vue';
+
 export default {
   name: 'Dashboard',
+  components: { UserInfoBubble },
   data() {
     return {
       user: JSON.parse(localStorage.getItem('user') || '{}'),
@@ -170,13 +164,13 @@ export default {
       // Använd Ali's routes istället för practice routes
       const routes = {
         'Färger': '/färger',
-        'Djur': '/djur', 
+        'Djur': '/djur',
         'Siffror': '/siffror',
         'Mat': '/mat',
         'Familj': '/familj',
         'Vardagsord': '/vardagsord'
       };
-      
+
       if (routes[categoryName]) {
         this.$router.push(routes[categoryName]);
       } else {
@@ -191,6 +185,36 @@ export default {
     }
     // Slut FIX methods
   }
+    loadProgress() {
+      const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
+      this.learnedWords = progress.learnedWords || 0;
+      this.completedQuizzes = progress.completedQuizzes || 0;
+    },
+    saveProgress() {
+      const progress = {
+        learnedWords: this.learnedWords,
+        completedQuizzes: this.completedQuizzes
+      };
+      localStorage.setItem('learningProgress', JSON.stringify(progress));
+    },
+    handleLogout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      this.$router.push('/');
+    },
+    goToProfile() {
+      this.$router.push('/profile');
+    },
+    navigateToSection(section) {
+      alert(`Öppnar ${section} - kommer snart!`);
+    },
+    startQuickPractice(type) {
+      this.$router.push(`/practice/${type}`);
+    },
+    startQuiz() {
+      this.$router.push('/quiz');
+    }
+  }
 }
 </script>
 
@@ -202,7 +226,6 @@ export default {
 
 ```css
 <style scoped>
-/* Din CSS-kod är oförändrad */
 .dashboard {
   max-width: 1200px;
   margin: 0 auto;
@@ -676,5 +699,4 @@ export default {
     flex-direction: column;
     gap: 15px;
   }
-}
-</style>
+}</style>
