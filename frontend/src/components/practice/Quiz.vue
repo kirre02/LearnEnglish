@@ -9,6 +9,9 @@
             <div class="progress-fill" :style="progressBarStyle"></div>
           </div>
         </div>
+        <button @click="confirmCancelQuiz" class="cancel-quiz-btn">
+          🏠 Avbryt quiz
+        </button>
       </div>
 
       <div v-if="!quizFinished" class="quiz-content">
@@ -342,7 +345,13 @@ export default {
   },
   mounted() {
     this.$el.focus();
-    this.loadCurrentQuizState();
+    
+    // NY: Kolla om vi ska fortsätta sparad quiz
+    if (this.$route.query.continue === 'true') {
+      this.loadSavedQuiz();
+    } else {
+      this.loadCurrentQuizState();
+    }
 
     if (this.$route.query.showResults === 'true') {
       const savedState = localStorage.getItem('lastQuizState');
@@ -369,6 +378,57 @@ export default {
     }
   },
   methods: {
+    // NY: Bekräfta avbrott av quiz
+    confirmCancelQuiz() {
+      if (confirm('Vill du avbryta quizet? Ditt framsteg kommer att sparas så du kan fortsätta senare.')) {
+        this.cancelQuiz();
+      }
+    },
+
+    // NY: Avbryt quiz och spara progress
+    cancelQuiz() {
+      // Spara quiz-state för att kunna fortsätta senare
+      const quizState = {
+        score: this.score,
+        currentQuestionIndex: this.currentQuestionIndex,
+        answered: this.answered,
+        selectedAnswer: this.selectedAnswer,
+        questions: this.questions,
+        quizFinished: false,
+        timestamp: new Date().getTime()
+      };
+      localStorage.setItem('savedQuizState', JSON.stringify(quizState));
+      localStorage.removeItem('currentQuizState'); // Rensa temporärt state
+      
+      // Gå till dashboard
+      this.$router.push('/dashboard');
+    },
+
+    // NY: Ladda sparad quiz
+    loadSavedQuiz() {
+      const savedState = localStorage.getItem('savedQuizState');
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState);
+          this.score = state.score || 0;
+          this.currentQuestionIndex = state.currentQuestionIndex || 0;
+          this.answered = state.answered || false;
+          this.selectedAnswer = state.selectedAnswer || null;
+          this.questions = state.questions || this.questions;
+          this.quizFinished = state.quizFinished || false;
+          
+          console.log('Fortsätter sparad quiz från fråga:', this.currentQuestionIndex + 1);
+          // Rensa savedQuizState så att Fortsätt-knappen tas bort efter laddning
+          localStorage.removeItem('savedQuizState');
+        } catch (e) {
+          console.error('Kunde inte ladda sparad quiz:', e);
+          this.loadCurrentQuizState(); // Fallback
+        }
+      } else {
+        this.loadCurrentQuizState(); // Fallback
+      }
+    },
+    
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
@@ -544,6 +604,7 @@ export default {
       this.saveQuizResult();
       this.saveQuizStateForResults();
       localStorage.removeItem('currentQuizState');
+      localStorage.removeItem('savedQuizState'); // Rensa sparad state vid avslut
     },
     saveQuizStateForResults() {
       const quizState = {
@@ -611,6 +672,7 @@ export default {
       this.pulseAudioButton = false;
 
       localStorage.removeItem('currentQuizState');
+      localStorage.removeItem('savedQuizState');
 
       this.$nextTick(() => {
         this.$el.focus();
@@ -693,7 +755,9 @@ export default {
     if (this.isSpeechSupported) {
       speechSynthesis.cancel();
     }
-    if (!this.quizFinished) {
+    // Spara endast 'currentQuizState' om quizet inte är slut och vi INTE har avbrutit det.
+    // 'cancelQuiz' hanterar redan sparning till 'savedQuizState'.
+    if (!this.quizFinished && !localStorage.getItem('savedQuizState')) { 
       this.saveCurrentQuizState();
     }
   }
@@ -701,6 +765,37 @@ export default {
 </script>
 
 <style scoped>
+/* NY CSS FÖR AVBRYT KNAPPEN */
+.cancel-quiz-btn {
+  background: linear-gradient(135deg, #FF6B6B, #FF5252);
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.cancel-quiz-btn:hover {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, #FF5252, #FF0000);
+}
+
+/* UPPDATERAD QUIZ-HEADER FÖR AVSTÅND */
+.quiz-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  gap: 15px;
+}
+/* SLUT NY CSS */
+
+
+/* BEFINTLIG CSS */
 .quiz-page-container {
   min-height: 100vh;
   background-color: #f7f3ed;
@@ -712,13 +807,6 @@ export default {
 .quiz-container {
   max-width: 600px;
   margin: 0 auto;
-}
-
-.quiz-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
 }
 
 .back-btn {
@@ -1061,13 +1149,23 @@ export default {
 @media (max-width: 768px) {
   .quiz-header {
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
+  }
+  
+  .cancel-quiz-btn {
+    order: 3;
+    width: 100%;
   }
 
   .quiz-progress {
-    text-align: center;
+    order: 2;
   }
 
+  .back-btn {
+    order: 1;
+    width: 100%;
+  }
+  
   .results-actions {
     flex-direction: column;
   }
