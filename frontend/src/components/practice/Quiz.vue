@@ -1,5 +1,6 @@
 <template>
-  <div class="quiz-page-container">    <div class="quiz-container">
+  <div class="quiz-page-container" @keydown="handleKeydown" tabindex="0">
+    <div class="quiz-container">
       <div class="quiz-header">
         <button @click="goBack" class="back-btn">← Tillbaka</button>
         <div class="quiz-progress">
@@ -7,9 +8,13 @@
           <div class="progress-bar">
             <div class="progress-fill" :style="progressBarStyle"></div>
           </div>
-        </div>      </div>
+        </div>
+        <button @click="confirmCancelQuiz" class="cancel-quiz-btn">
+          🏠 Avbryt quiz
+        </button>
+      </div>
 
-    <div v-if="!quizFinished" class="quiz-content">
+      <div v-if="!quizFinished" class="quiz-content">
         <div class="question-bubble">
           <div class="question-header">
             <div class="question-emoji">🧠</div>
@@ -17,15 +22,17 @@
           <h2>{{ currentQuestion.question }}</h2>
           <div class="question-hint" v-if="currentQuestion.hint">
             💡 {{ currentQuestion.hint }}
-          </div>        </div>
+          </div>
+        </div>
 
         <div class="options-container">
           <button
             v-for="(option, index) in currentQuestion.options"
             :key="index"
             @click="checkAnswer(option)"
-            :class="['option-btn', getOptionClass(option)]"
+            :class="['option-btn', getOptionClass(option), { 'focused': focusedOptionIndex === index }]"
             :disabled="answered"
+            ref="optionButtons"
           >
             <span class="option-emoji">{{ getOptionEmoji(index) }}</span>
             <span class="option-text">{{ option }}</span>
@@ -39,22 +46,33 @@
               <span v-if="currentLoadingOption === option">⏳</span>
               <span v-else>🔊</span>
             </button>
-          </button>        </div>
-      <div v-if="answered" class="feedback-bubble" :class="feedbackClass">
+          </button>
+        </div>
+
+        <div v-if="answered" class="feedback-bubble" :class="feedbackClass" ref="feedbackSection">
           <div class="feedback-emoji">{{ feedbackEmoji }}</div>
           <div class="feedback-text">{{ feedbackText }}</div>
-          <button
-            v-if="!isAnswerCorrect"
-            @click="playCorrectAnswerAudio"
-            class="audio-hint-btn"
-            :disabled="audioLoading"
-          >
-            <span v-if="audioLoading && currentLoadingOption === 'correct-answer'">⏳ Laddar...</span>
-            <span v-else>🔊 Hör rätt svar</span>
-          </button>
-          <button @click="nextQuestion" class="next-btn">
-            {{ isLastQuestion ? 'Se resultat' : 'Nästa fråga' }} →
-          </button>
+          <div class="feedback-actions" ref="feedbackActions">
+            <button
+              v-if="!isAnswerCorrect"
+              @click="playCorrectAnswerAudio"
+              class="audio-hint-btn"
+              :disabled="audioLoading"
+              :class="{ 'focused': focusedAction === 'audio', 'pulse': shouldPulseAudioButton }"
+              ref="audioButton"
+            >
+              <span v-if="audioLoading && currentLoadingOption === 'correct-answer'">⏳ Laddar...</span>
+              <span v-else>🔊 Hör rätt svar</span>
+            </button>
+            <button
+              @click="nextQuestion"
+              class="next-btn"
+              :class="{ 'pulse': shouldPulseNextButton, 'focused': focusedAction === 'next' }"
+              ref="nextButton"
+            >
+              {{ isLastQuestion ? 'Se resultat' : 'Nästa fråga' }} →
+            </button>
+          </div>
         </div>
       </div>
 
@@ -95,7 +113,6 @@ export default {
       return shuffled;
     };
 
-    // UTÖKAD LISTA MED 20 FRÅGOR
     const initialQuestions = [
       {
         question: "Vad betyder 'Hej' på engelska?",
@@ -228,7 +245,8 @@ export default {
         options: ["Small", "Big", "Tall", "Short"],
         correctAnswer: "Big",
         hint: "Motsatsen till liten",
-        audioText: "Big"      },
+        audioText: "Big"
+      },
       {
         question: "Vad betyder 'Lycklig' på engelska?",
         options: ["Sad", "Happy", "Angry", "Tired"],
@@ -250,7 +268,8 @@ export default {
       currentQuestionIndex: 0,
       answered: false,
       selectedAnswer: null,
-      quizFinished: false,      progress: {}, // För att lagra laddad progress
+      quizFinished: false,
+      progress: {},
       questions: shuffleArray(preparedQuestions),
       initialQuestions: initialQuestions,
       shuffleArray: shuffleArray,
@@ -259,7 +278,14 @@ export default {
       audioLoading: false,
       currentLoadingOption: null,
       currentAudio: null,
-      isSpeechSupported: 'speechSynthesis' in window    }
+      isSpeechSupported: 'speechSynthesis' in window,
+
+      // DATA FÖR ANVÄNDARVÄNLIGHET
+      focusedOptionIndex: 0,
+      focusedAction: 'next',
+      shouldPulseNextButton: false,
+      pulseAudioButton: false
+    }
   },
   computed: {
     currentQuestion() {
@@ -309,22 +335,36 @@ export default {
     },
     isAnswerCorrect() {
       return this.selectedAnswer === this.currentQuestion.correctAnswer;
-    },  },
+    },
+    shouldPulseNextButton() {
+      return this.answered && this.isAnswerCorrect;
+    },
+    shouldPulseAudioButton() {
+      return this.pulseAudioButton;
+    }
+  },
   mounted() {
-    // Kolla om vi ska visa resultat direkt (när man kommer tillbaka från results-sidan)
-  if (this.$route.query.showResults === 'true') {
+    this.$el.focus();
+    
+    // NY: Kolla om vi ska fortsätta sparad quiz
+    if (this.$route.query.continue === 'true') {
+      this.loadSavedQuiz();
+    } else {
+      this.loadCurrentQuizState();
+    }
+
+    if (this.$route.query.showResults === 'true') {
       const savedState = localStorage.getItem('lastQuizState');
       if (savedState) {
         try {
           const quizState = JSON.parse(savedState);
           this.quizFinished = true;
-        this.score = quizState.score;
+          this.score = quizState.score;
           localStorage.removeItem('lastQuizState');
         } catch (e) {
           console.error("Kunde inte tolka sparad quiz-state:", e);
         }
       }
-      // Ta bort query-parametern så den inte finns kvar vid refresh
       this.$router.replace({ query: {} });
     }
 
@@ -332,16 +372,62 @@ export default {
       this.$router.push('/');
     }
     this.loadProgress();
-    
-    // Logga om ljudstöd saknas
+
     if (!this.isSpeechSupported) {
       console.log('Web Speech API är inte tillgängligt i denna webbläsare');
     }
-
-    this.fetchQuizQuestions();
-
   },
   methods: {
+    // NY: Bekräfta avbrott av quiz
+    confirmCancelQuiz() {
+      if (confirm('Vill du avbryta quizet? Ditt framsteg kommer att sparas så du kan fortsätta senare.')) {
+        this.cancelQuiz();
+      }
+    },
+
+    // NY: Avbryt quiz och spara progress
+    cancelQuiz() {
+      // Spara quiz-state för att kunna fortsätta senare
+      const quizState = {
+        score: this.score,
+        currentQuestionIndex: this.currentQuestionIndex,
+        answered: this.answered,
+        selectedAnswer: this.selectedAnswer,
+        questions: this.questions,
+        quizFinished: false,
+        timestamp: new Date().getTime()
+      };
+      localStorage.setItem('savedQuizState', JSON.stringify(quizState));
+      localStorage.removeItem('currentQuizState'); // Rensa temporärt state
+      
+      // Gå till dashboard
+      this.$router.push('/dashboard');
+    },
+
+    // NY: Ladda sparad quiz
+    loadSavedQuiz() {
+      const savedState = localStorage.getItem('savedQuizState');
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState);
+          this.score = state.score || 0;
+          this.currentQuestionIndex = state.currentQuestionIndex || 0;
+          this.answered = state.answered || false;
+          this.selectedAnswer = state.selectedAnswer || null;
+          this.questions = state.questions || this.questions;
+          this.quizFinished = state.quizFinished || false;
+          
+          console.log('Fortsätter sparad quiz från fråga:', this.currentQuestionIndex + 1);
+          // Rensa savedQuizState så att Fortsätt-knappen tas bort efter laddning
+          localStorage.removeItem('savedQuizState');
+        } catch (e) {
+          console.error('Kunde inte ladda sparad quiz:', e);
+          this.loadCurrentQuizState(); // Fallback
+        }
+      } else {
+        this.loadCurrentQuizState(); // Fallback
+      }
+    },
     
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
@@ -354,11 +440,144 @@ export default {
       return '';
     },
     checkAnswer(selectedAnswer) {
+      if (this.answered) return;
+
       this.answered = true;
       this.selectedAnswer = selectedAnswer;
 
       if (selectedAnswer === this.currentQuestion.correctAnswer) {
         this.score++;
+        this.pulseAudioButton = false;
+      } else {
+        this.pulseAudioButton = true;
+      }
+
+      this.saveCurrentQuizState();
+
+      this.$nextTick(() => {
+        if (this.$refs.feedbackSection) {
+          this.$refs.feedbackSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+        }
+
+        if (this.isAnswerCorrect) {
+          this.focusedAction = 'next';
+          this.$nextTick(() => {
+            if (this.$refs.nextButton) {
+              this.$refs.nextButton.focus();
+            }
+          });
+        } else {
+          this.focusedAction = 'audio';
+          this.$nextTick(() => {
+            if (this.$refs.audioButton) {
+              this.$refs.audioButton.focus();
+            }
+          });
+        }
+      });
+    },
+    handleKeydown(event) {
+      if (this.quizFinished) return;
+
+      if (!this.answered) {
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          this.focusedOptionIndex = (this.focusedOptionIndex - 1 + this.currentQuestion.options.length) % this.currentQuestion.options.length;
+          this.scrollToFocusedOption();
+        } else if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          this.focusedOptionIndex = (this.focusedOptionIndex + 1) % this.currentQuestion.options.length;
+          this.scrollToFocusedOption();
+        } else if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          this.checkAnswer(this.currentQuestion.options[this.focusedOptionIndex]);
+        }
+      } else {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          if (!this.isAnswerCorrect) {
+            this.focusedAction = 'audio';
+            this.focusCurrentAction();
+          }
+        } else if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          if (!this.isAnswerCorrect) {
+            this.focusedAction = 'next';
+            this.focusCurrentAction();
+          }
+        } else if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          if (this.focusedAction === 'next') {
+            this.nextQuestion();
+          } else if (this.focusedAction === 'audio') {
+            this.playCorrectAnswerAudio();
+          }
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          if (this.isAnswerCorrect) {
+            this.nextQuestion();
+          }
+        }
+      }
+    },
+    scrollToFocusedOption() {
+      this.$nextTick(() => {
+        if (this.$refs.optionButtons && this.$refs.optionButtons[this.focusedOptionIndex]) {
+          this.$refs.optionButtons[this.focusedOptionIndex].scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+        }
+      });
+    },
+    focusCurrentAction() {
+      this.$nextTick(() => {
+        if (this.focusedAction === 'next' && this.$refs.nextButton) {
+          this.$refs.nextButton.focus();
+        } else if (this.focusedAction === 'audio' && this.$refs.audioButton) {
+          this.$refs.audioButton.focus();
+        }
+      });
+    },
+    saveCurrentQuizState() {
+      const quizState = {
+        score: this.score,
+        currentQuestionIndex: this.currentQuestionIndex,
+        answered: this.answered,
+        selectedAnswer: this.selectedAnswer,
+        questions: this.questions,
+        quizFinished: this.quizFinished
+      };
+      localStorage.setItem('currentQuizState', JSON.stringify(quizState));
+    },
+    loadCurrentQuizState() {
+      const savedState = localStorage.getItem('currentQuizState');
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState);
+          this.score = state.score || 0;
+          this.currentQuestionIndex = state.currentQuestionIndex || 0;
+          this.answered = state.answered || false;
+          this.selectedAnswer = state.selectedAnswer || null;
+          this.questions = state.questions || this.questions;
+          this.quizFinished = state.quizFinished || false;
+        } catch (e) {
+          console.error('Kunde inte ladda quiz state:', e);
+        }
+      }
+    },
+    goBack() {
+      if (this.currentQuestionIndex > 0) {
+        this.currentQuestionIndex--;
+        this.answered = false;
+        this.selectedAnswer = null;
+        this.focusedOptionIndex = 0;
+        this.saveCurrentQuizState();
+      } else {
+        this.$router.push('/dashboard');
       }
     },
     nextQuestion() {
@@ -368,15 +587,25 @@ export default {
         this.currentQuestionIndex++;
         this.answered = false;
         this.selectedAnswer = null;
+        this.focusedOptionIndex = 0;
+        this.focusedAction = 'next';
+        this.pulseAudioButton = false;
+        this.saveCurrentQuizState();
+
+        this.$nextTick(() => {
+          this.focusedOptionIndex = 0;
+          this.scrollToFocusedOption();
+        });
       }
     },
     finishQuiz() {
       this.quizFinished = true;
       this.updateProgress();
       this.saveQuizResult();
-      this.saveQuizStateForResults(); // Spara state när quizet är avslutat
+      this.saveQuizStateForResults();
+      localStorage.removeItem('currentQuizState');
+      localStorage.removeItem('savedQuizState'); // Rensa sparad state vid avslut
     },
-    // NY METOD: Spara quiz-state för återanvändning (från gren 4)
     saveQuizStateForResults() {
       const quizState = {
         score: this.score,
@@ -387,7 +616,7 @@ export default {
     async saveQuizResult() {
       try {
         const resultData = {
-          userId: 1, // TODO: Hämta från localStorage/auth
+          userId: 1,
           score: this.score,
           total: this.questions.length
         };
@@ -438,34 +667,40 @@ export default {
       this.answered = false;
       this.selectedAnswer = null;
       this.quizFinished = false;
-    },
-    goBack() {
-      this.$router.back();
+      this.focusedOptionIndex = 0;
+      this.focusedAction = 'next';
+      this.pulseAudioButton = false;
+
+      localStorage.removeItem('currentQuizState');
+      localStorage.removeItem('savedQuizState');
+
+      this.$nextTick(() => {
+        this.$el.focus();
+      });
     },
     goToDashboard() {
       this.$router.push('/dashboard');
     },
-
-
-    // Gå till resultat-sida (från gren 4)
     goToAllResults() {
-      // Lägg till query-parameter för att visa resultat vid återkomst
       this.$router.push({ path: '/results', query: { showResults: 'true' } });
     },
-
-    // LJUDMETODER (från gren 5)
     async playOptionAudio(option) {
       this.currentLoadingOption = option;
       await this.playAudio(option);
       this.currentLoadingOption = null;
     },
-
     async playCorrectAnswerAudio() {
       this.currentLoadingOption = 'correct-answer';
       await this.playAudio(this.currentQuestion.correctAnswer);
       this.currentLoadingOption = null;
-    },
 
+      this.$nextTick(() => {
+        this.focusedAction = 'next';
+        if (this.$refs.nextButton) {
+          this.$refs.nextButton.focus();
+        }
+      });
+    },
     async playAudio(text) {
       if (!this.isSpeechSupported) {
         console.warn('Web Speech API stöds inte i denna webbläsare');
@@ -506,48 +741,72 @@ export default {
         this.showAudioError();
       }
     },
-
     showBrowserSupportMessage() {
       alert('Ljudstöd är för närvarande inte tillgängligt i din webbläsare. Vi rekommenderar Chrome eller Edge för bästa upplevelse.');
     },
-
     showAudioError() {
       console.warn('Kunde inte spela upp ljudet. Kontrollera din ljudinställningar.');
     },
-
     shouldShowOptionAudio() {
       return this.isSpeechSupported;
-    },
+    }
   },
-
   beforeUnmount() {
     if (this.isSpeechSupported) {
       speechSynthesis.cancel();
-
+    }
+    // Spara endast 'currentQuizState' om quizet inte är slut och vi INTE har avbrutit det.
+    // 'cancelQuiz' hanterar redan sparning till 'savedQuizState'.
+    if (!this.quizFinished && !localStorage.getItem('savedQuizState')) { 
+      this.saveCurrentQuizState();
     }
   }
 }
-
 </script>
 
 <style scoped>
-
-.quiz-page-container {
-  min-height: 100vh;
-  background-color: #f7f3ed;
-  padding: 20px;
-  font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+/* NY CSS FÖR AVBRYT KNAPPEN */
+.cancel-quiz-btn {
+  background: linear-gradient(135deg, #FF6B6B, #FF5252);
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  font-size: 0.9em;
+  white-space: nowrap;
 }
 
-.quiz-container {
-  max-width: 600px;
-  margin: 0 auto;
+.cancel-quiz-btn:hover {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, #FF5252, #FF0000);
 }
+
+/* UPPDATERAD QUIZ-HEADER FÖR AVSTÅND */
 .quiz-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
+  gap: 15px;
+}
+/* SLUT NY CSS */
+
+
+/* BEFINTLIG CSS */
+.quiz-page-container {
+  min-height: 100vh;
+  background-color: #f7f3ed;
+  padding: 20px;
+  font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+  outline: none;
+}
+
+.quiz-container {
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 .back-btn {
@@ -590,7 +849,6 @@ export default {
   transition: width 0.3s ease;
 }
 
-
 .question-bubble {
   background: linear-gradient(135deg, #FF9A8B, #FF6A88);
   color: white;
@@ -630,6 +888,7 @@ export default {
   font-size: 0.9em;
   margin-top: 15px;
 }
+
 .options-container {
   display: grid;
   gap: 15px;
@@ -651,9 +910,11 @@ export default {
   position: relative;
 }
 
-.option-btn:hover:not(:disabled) {
+.option-btn:hover:not(:disabled),
+.option-btn.focused {
   transform: translateY(-3px);
   box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  border-color: #4ECDC4;
 }
 
 .option-btn.correct {
@@ -729,6 +990,14 @@ export default {
   margin-bottom: 20px;
 }
 
+.feedback-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .audio-hint-btn {
   background: rgba(255, 255, 255, 0.2);
   border: 1px solid white;
@@ -736,15 +1005,20 @@ export default {
   padding: 10px 20px;
   color: white;
   cursor: pointer;
-  margin-bottom: 15px;
   transition: all 0.3s ease;
   font-size: 0.9em;
   min-width: 140px;
 }
 
-.audio-hint-btn:hover:not(:disabled) {
+.audio-hint-btn:hover:not(:disabled),
+.audio-hint-btn.focused {
   background: rgba(255, 255, 255, 0.3);
   transform: scale(1.05);
+  border-width: 2px;
+}
+
+.audio-hint-btn.pulse {
+  animation: pulse 1s infinite;
 }
 
 .audio-hint-btn:disabled {
@@ -764,10 +1038,16 @@ export default {
   transition: all 0.3s ease;
 }
 
-.next-btn:hover {
+.next-btn:hover,
+.next-btn.focused {
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
+
+.next-btn.pulse {
+  animation: pulse 1s infinite;
+}
+
 .results-bubble {
   padding: 40px;
   border-radius: 25px;
@@ -833,7 +1113,6 @@ export default {
   backdrop-filter: blur(10px);
 }
 
-/* NY CSS FÖR RESULTS-KNAPPEN */
 .results-btn {
   background: rgba(102, 126, 234, 0.8);
   backdrop-filter: blur(10px);
@@ -848,6 +1127,13 @@ export default {
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(0,0,0,0.3);
 }
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
 @keyframes slideUp {
   0% { transform: translateY(20px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
@@ -859,16 +1145,27 @@ export default {
   70% { transform: scale(0.9); }
   100% { transform: scale(1); opacity: 1; }
 }
+
 @media (max-width: 768px) {
   .quiz-header {
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
+  }
+  
+  .cancel-quiz-btn {
+    order: 3;
+    width: 100%;
   }
 
   .quiz-progress {
-    text-align: center;
+    order: 2;
   }
 
+  .back-btn {
+    order: 1;
+    width: 100%;
+  }
+  
   .results-actions {
     flex-direction: column;
   }
@@ -884,6 +1181,10 @@ export default {
   .option-audio-btn {
     width: 30px;
     height: 30px;
+  }
+
+  .feedback-actions {
+    flex-direction: column;
   }
 }
 </style>

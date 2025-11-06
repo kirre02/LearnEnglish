@@ -36,7 +36,7 @@
         <div class="bubble-emoji">🚀</div>
         <div class="bubble-content">
           <h3>Ditt äventyr börjar!</h3>
-          <p>{{ learnedWords }} av 125 ord upptäckta</p>
+          <p>{{ learnedWords }} av {{ totalWords }} ord upptäckta</p>
           <div class="progress-ring">
             <div class="ring-fill" :style="progressStyle"></div>
             <span class="ring-text">{{ progressPercentage }}%</span>
@@ -71,10 +71,52 @@
           <span class="btn-emoji">🎤</span>
           <span>Upprepa</span>
         </button>
-        <button class="action-btn quiz-btn" @click="startQuiz">
+        <button class="action-btn quiz-btn" @click="showQuizOptions">
           <span class="btn-emoji">🎯</span>
           <span>Quiz</span>
         </button>
+      </div>
+    </div>
+
+    <!-- Quiz Options Modal -->
+    <div v-if="showQuizModal" class="modal-overlay" @click="closeQuizModal">
+      <div class="quiz-modal" @click.stop>
+        <div class="modal-header">
+          <h3>Välj Quiz-alternativ 🎯</h3>
+          <button @click="closeQuizModal" class="close-modal-btn">✕</button>
+        </div>
+        
+        <div class="quiz-options">
+          <div 
+            v-if="hasSavedQuiz" 
+            class="quiz-option continue-option"
+            @click="continueSavedQuiz"
+          >
+            <div class="option-emoji">⏯️</div>
+            <div class="option-content">
+              <h4>Fortsätt Quiz</h4>
+              <p>Fortsätt där du slutade</p>
+              <div class="option-badge">Påbörjad</div>
+            </div>
+            <div class="option-arrow">→</div>
+          </div>
+          
+          <div 
+            class="quiz-option new-option"
+            @click="startNewQuiz"
+          >
+            <div class="option-emoji">🆕</div>
+            <div class="option-content">
+              <h4>Nytt Quiz</h4>
+              <p>Starta ett nytt quiz från början</p>
+            </div>
+            <div class="option-arrow">→</div>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button @click="closeQuizModal" class="cancel-btn">Avbryt</button>
+        </div>
       </div>
     </div>
 
@@ -96,7 +138,7 @@
           <p>{{ category.description }}</p>
           <div class="card-sparkle">✨</div>
         </div>
-        </div>
+      </div>
     </div>
 
     <div class="encouragement-footer">
@@ -119,7 +161,10 @@ export default {
     return {
       user: JSON.parse(localStorage.getItem('user') || '{}'),
       learnedWords: 0,
+      totalWords: 120,
       completedQuizzes: 0,
+      hasSavedQuiz: false,
+      showQuizModal: false,
       categories: [
         { id: 1, name: 'Färger', emoji: '🎨', description: 'Upptäck alla färger' },
         { id: 2, name: 'Djur', emoji: '🐶', description: 'Djur från hela världen' },
@@ -132,8 +177,7 @@ export default {
   },
   computed: {
     progressPercentage() {
-      // 125 är det totala antalet ord i alla kategorier (ungefär 6*20)
-      return Math.round((this.learnedWords / 125) * 100);
+      return this.totalWords > 0 ? Math.round((this.learnedWords / this.totalWords) * 100) : 0;
     },
     progressStyle() {
       return {
@@ -141,33 +185,81 @@ export default {
       };
     }
   },
-  mounted() {
+  async mounted() {
     if (!localStorage.getItem('token')) {
       this.$router.push('/');
     }
-    this.loadProgress();
+    await this.loadUserProgress();
+    this.checkForSavedQuiz();
   },
   methods: {
-    // FIX: KOMBINERAD METODS-SEKTION
-    loadProgress() {
+    async loadUserProgress() {
+      try {
+        const response = await fetch('http://localhost:9001/api/user-progress');
+        
+        if (response.ok) {
+          const progress = await response.json();
+          this.learnedWords = progress.learnedWords;
+          this.totalWords = progress.totalWords;
+          this.completedQuizzes = progress.completedQuizzes;
+          console.log('Progress loaded from API:', progress);
+        } else {
+          console.log('API not available, using localStorage');
+          this.loadProgressFromLocalStorage();
+        }
+      } catch (error) {
+        console.log('Error loading from API:', error);
+        this.loadProgressFromLocalStorage();
+      }
+    },
+
+    loadProgressFromLocalStorage() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
       this.learnedWords = progress.learnedWords || 0;
       this.completedQuizzes = progress.completedQuizzes || 0;
     },
-    saveProgress() {
-      const progress = {
-        learnedWords: this.learnedWords,
-        completedQuizzes: this.completedQuizzes
-      };
-      localStorage.setItem('learningProgress', JSON.stringify(progress));
+
+    // NY: Kolla om det finns ett sparad quiz
+    checkForSavedQuiz() {
+      const savedQuiz = localStorage.getItem('savedQuizState');
+      this.hasSavedQuiz = !!savedQuiz;
     },
+
+    // NY: Visa quiz-alternativ modal
+    showQuizOptions() {
+      this.showQuizModal = true;
+    },
+
+    // NY: Stäng modal
+    closeQuizModal() {
+      this.showQuizModal = false;
+    },
+
+    // NY: Fortsätt sparad quiz
+    continueSavedQuiz() {
+      this.closeQuizModal();
+      this.$router.push({ path: '/practice/quiz', query: { continue: 'true' } });
+    },
+
+    // NY: Starta nytt quiz
+    startNewQuiz() {
+      this.closeQuizModal();
+      // Rensa eventuell sparad quiz-state för att starta nytt
+      localStorage.removeItem('savedQuizState');
+      localStorage.removeItem('currentQuizState');
+      this.$router.push('/practice/quiz');
+    },
+
     handleLogout() {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('learningProgress');
+      localStorage.removeItem('savedQuizState');
+      localStorage.removeItem('currentQuizState');
       this.$router.push('/');
     },
+
     navigateToCategory(categoryName) {
-      // Använd Ali's routes istället för practice routes
       const routes = {
         'Färger': '/färger',
         'Djur': '/djur', 
@@ -183,26 +275,21 @@ export default {
         alert(`Öppnar ${categoryName} - kommer snart!`);
       }
     },
+
     startQuickPractice(type) {
       this.$router.push(`/practice/${type}`);
     },
+
     startQuiz() {
-      this.$router.push('/practice/quiz');  // Behåll denna från main
+      this.$router.push('/practice/quiz');
     }
-    // Slut FIX methods
   }
 }
 </script>
 
----
-
-## 🎨 Stil (CSS) - Oförändrad
-
-> **Obs:** CSS-koden nedan är oförändrad från din ursprungliga text, och är nödvändig för designen.
-
-```css
 <style scoped>
-/* Din CSS-kod är oförändrad */
+/* Alla ursprungliga CSS-stilar förblir oförändrade */
+
 .dashboard {
   max-width: 1200px;
   margin: 0 auto;
@@ -355,6 +442,161 @@ export default {
   box-shadow: 0 6px 20px rgba(255,107,107,0.5);
 }
 
+/* NY: Quiz Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.quiz-modal {
+  background: white;
+  border-radius: 25px;
+  padding: 0;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+  color: white;
+  padding: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.5em;
+}
+
+.close-modal-btn {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.close-modal-btn:hover {
+  background: rgba(255,255,255,0.3);
+  transform: scale(1.1);
+}
+
+.quiz-options {
+  padding: 25px;
+}
+
+.quiz-option {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 15px;
+  border: 2px solid transparent;
+}
+
+.quiz-option:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.continue-option {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.new-option {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  color: white;
+}
+
+.option-emoji {
+  font-size: 2.5em;
+  flex-shrink: 0;
+}
+
+.option-content {
+  flex: 1;
+}
+
+.option-content h4 {
+  margin: 0 0 5px 0;
+  font-size: 1.2em;
+}
+
+.option-content p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 0.9em;
+}
+
+.option-badge {
+  background: rgba(255,255,255,0.3);
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-size: 0.7em;
+  margin-top: 8px;
+  display: inline-block;
+  backdrop-filter: blur(10px);
+}
+
+.option-arrow {
+  font-size: 1.5em;
+  opacity: 0.7;
+  transition: all 0.3s ease;
+}
+
+.quiz-option:hover .option-arrow {
+  transform: translateX(5px);
+  opacity: 1;
+}
+
+.modal-footer {
+  padding: 20px 25px;
+  border-top: 1px solid #eee;
+  text-align: right;
+}
+
+.cancel-btn {
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  color: #6c757d;
+  padding: 10px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.cancel-btn:hover {
+  background: #e9ecef;
+  border-color: #dee2e6;
+}
+
 /* Framstegs-bubblor */
 .progress-bubbles {
   display: grid;
@@ -483,7 +725,6 @@ export default {
 .card-4 { background: linear-gradient(135deg, #667eea, #764ba2); }
 .card-5 { background: linear-gradient(135deg, #FD746C, #FF9068); }
 .card-6 { background: linear-gradient(135deg, #A8FF78, #78FFD6); }
-.card-quiz { background: linear-gradient(135deg, #FF9A8B, #FF6A88); }
 
 .card-wave {
   position: absolute;
@@ -645,6 +886,11 @@ export default {
   50% { transform: scale(1.02); }
 }
 
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
 /* Responsiv design */
 @media (max-width: 768px) {
   .welcome-container {
@@ -675,6 +921,21 @@ export default {
   .user-details {
     flex-direction: column;
     gap: 15px;
+  }
+  
+  .quiz-modal {
+    width: 95%;
+    margin: 20px;
+  }
+  
+  .quiz-option {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
+  }
+  
+  .option-emoji {
+    font-size: 2em;
   }
 }
 </style>
