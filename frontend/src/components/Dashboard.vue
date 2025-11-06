@@ -23,7 +23,7 @@
               <span class="label">ord lärt!</span>
             </div>
             <button @click="handleLogout" class="logout-btn">
-              <span class="logout-text">Logga ut</span>
+              <span class="logout-text">Logga Ut</span>
               <span class="logout-emoji">👋</span>
             </button>
           </div>
@@ -53,7 +53,7 @@
         </div>
       </div>
 
-     <div class="progress-bubble chart-bubble">
+      <div class="progress-bubble chart-bubble">
         <QuizResultatMini />
       </div>
     </div>
@@ -94,15 +94,13 @@
           v-for="(category, index) in categories" 
           :key="category.id" 
           :class="['explore-card', 'card-' + (index + 1)]" 
-          @click="navigateToCategory(category.name)"
-        >
+          @click="navigateToCategory(category.name)">
           <div class="card-emoji">{{ category.emoji }}</div>
           <div class="card-wave"></div>
           <h3>{{ category.name }}</h3>
           <p>{{ category.description }}</p>
           <div class="card-sparkle">✨</div>
         </div>
-        
       </div>
     </div>
 
@@ -120,7 +118,6 @@
 </template>
 
 <script>
-
 import QuizResultatMini from "@/components/QuizResults.vue"; 
 
 export default {
@@ -131,6 +128,8 @@ export default {
       user: JSON.parse(localStorage.getItem('user') || '{}'),
       learnedWords: 0,
       completedQuizzes: 0,
+      quizResults: [],
+      chartData: null,
       categories: [
         { id: 1, name: 'Färger', emoji: '🎨', description: 'Upptäck alla färger' },
         { id: 2, name: 'Djur', emoji: '🐶', description: 'Djur från hela världen' },
@@ -152,41 +151,46 @@ export default {
     }
   },
   async mounted() {
-  try {
-    const userId = 1;
-    const res = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
-    const data = await res.json();
+    // Token-kontroll från din version
+    if (!localStorage.getItem('token')) {
+      this.$router.push('/');
+    }
+    
+    // Quiz results från main version
+    try {
+      const userId = 1;
+      const res = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
+      const data = await res.json();
 
-    // 🔹 En eski (ilk) sonucu kaldır
-    if (data.length > 0) {
-      data.shift();
+      if (data.length > 0) {
+        data.shift();
+      }
+
+      this.quizResults = data.map(r => ({
+        date: new Date(r.created_at).toLocaleDateString("sv-SE"),
+        correct: r.correct_answers,
+        total: r.correct_answers + r.wrong_answers,
+        percent: Math.round((r.correct_answers / (r.correct_answers + r.wrong_answers)) * 100)
+      }));
+
+      this.chartData = {
+        labels: this.quizResults.map(r => r.date),
+        datasets: [
+          {
+            label: "Quizresultat (%)",
+            data: this.quizResults.map(r => r.percent),
+            backgroundColor: ["#FF9A8B", "#4ECDC4", "#C77DFF", "#FFD93D", "#FF6B6B"]
+          }
+        ]
+      };
+
+    } catch (err) {
+      console.error("❌ Fel vid hämtning av quizresultat:", err);
     }
 
-    // 🔹 Her sonucu quizdeki toplam soru sayısına göre orana çevir
-    this.quizResults = data.map(r => ({
-      date: new Date(r.created_at).toLocaleDateString("sv-SE"),
-      correct: r.correct_answers,
-      total: r.correct_answers + r.wrong_answers,
-      percent: Math.round((r.correct_answers / (r.correct_answers + r.wrong_answers)) * 100)
-    }));
-
-    // 🔹 Grafiğe uygun hale getir
-    this.chartData = {
-      labels: this.quizResults.map(r => r.date),
-      datasets: [
-        {
-          label: "Quizresultat (%)",
-          data: this.quizResults.map(r => r.percent),
-          backgroundColor: ["#FF9A8B", "#4ECDC4", "#C77DFF", "#FFD93D", "#FF6B6B"]
-        }
-      ]
-    };
-
-  } catch (err) {
-    console.error("❌ Fel vid hämtning av quizresultat:", err);
-  }
-}
-,
+    // Din loadProgress funktion
+    this.loadProgress();
+  },
   methods: {
     loadProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
@@ -206,8 +210,20 @@ export default {
       this.$router.push('/');
     },
     navigateToCategory(categoryName) {
-      // Navigerar till en dynamisk route baserat på kategorinamn
-      this.$router.push(`/category/${categoryName}`);
+      const routes = {
+        'Färger': '/färger',
+        'Djur': '/djur', 
+        'Siffror': '/siffror',
+        'Mat': '/mat',
+        'Familj': '/familj',
+        'Vardagsord': '/vardagsord'
+      };
+      
+      if (routes[categoryName]) {
+        this.$router.push(routes[categoryName]);
+      } else {
+        alert(`Öppnar ${categoryName} - kommer snart!`);
+      }
     },
     startQuickPractice(type) {
       this.$router.push(`/practice/${type}`);
@@ -215,21 +231,15 @@ export default {
     startQuiz() {
       this.$router.push('/practice/quiz');
     },
-     goToResults() {
+    goToResults() {
       this.$router.push('/quiz-results');
+    }
   }
-}}
+}
 </script>
 
----
-
-## 🎨 Stil (CSS)
-
-> **Obs:** CSS-koden nedan är oförändrad, men jag inkluderar den för att du ska ha allt samlat. **Den är nödvändig** för att korten (`card-1` till `card-6`) ska få sina unika färger, vilket nu hanteras av `:class="['explore-card', 'card-' + (index + 1)]"` i HTML-mallen.
-
-```css
 <style scoped>
-/* Din CSS-kod är oförändrad */
+/* Din CSS-kod förblir oförändrad - samma som du skickade */
 .dashboard {
   max-width: 1200px;
   margin: 0 auto;

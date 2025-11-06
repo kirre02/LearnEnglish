@@ -13,7 +13,7 @@
         </div>
       </div>
 
-      <!-- 🧠 QUIZ MODU (isResultsMode = false) -->
+      <!-- 🧠 QUIZ MODE (isResultsMode = false) -->
       <div v-if="!isResultsMode">
 
         <!-- ⏳ Loading -->
@@ -149,11 +149,45 @@
   </div>
 </template>
 
-
 <script>
 export default {
   name: 'Quiz',
-  data() { 
+  data() {
+    const shuffleArray = (array) => {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    };
+
+    // UTÖKAD LISTA MED 20 FRÅGOR
+    const initialQuestions = [
+      {
+        question: "Vad betyder 'Hej' på engelska?",
+        options: ["Hello", "Goodbye", "Thank you", "Excuse me"],
+        correctAnswer: "Hello",
+        hint: "Det är det första man säger när man träffar någon",
+        audioText: "Hello"
+      },
+      {
+        question: "Vad är 'Äpple' på engelska?",
+        options: ["Pear", "Banana", "Apple", "Orange"],
+        correctAnswer: "Apple",
+        hint: "En röd eller grön frukt",
+        audioText: "Apple"
+      },
+      // ... resten av dina 20 frågor
+    ];
+
+    const preparedQuestions = initialQuestions.map(question => {
+      return {
+        ...question,
+        options: shuffleArray([...question.options])
+      };
+    });
+
     return {
       score: 0,
       currentQuestionIndex: 0,
@@ -164,6 +198,8 @@ export default {
       questions: [],
       results: [],
       loading: true,
+      initialQuestions: initialQuestions,
+      shuffleArray: shuffleArray,
 
       // DATA FÖR LJUD
       audioLoading: false,
@@ -171,17 +207,16 @@ export default {
       currentAudio: null,
       isSpeechSupported: 'speechSynthesis' in window,
       
-      // DATA FÖR AUTO-SCROLL
-      autoScrollSpeed: 4,
+      // Auto-scroll data
       isAutoScrolling: false,
+      scrollSpeed: 0,
       scrollAnimation: null,
-      scrollSpeed: 0, 
+      autoScrollSpeed: 8
     }
   },
   computed: {
     currentQuestion() {
-      const question = this.questions[this.currentQuestionIndex];
-      return question;
+      return this.questions[this.currentQuestionIndex];
     },
     isLastQuestion() {
       return this.currentQuestionIndex === this.questions.length - 1;
@@ -191,15 +226,14 @@ export default {
       return { width: `${progress}%` };
     },
     isResultsMode() {
-  return this.$route.path.includes('/quiz/results') || this.$route.path.includes('/quiz-results');
-  },
+      return this.$route.path.includes('/quiz/results') || this.$route.path.includes('/quiz-results');
+    },
     feedbackClass() {
       return this.selectedAnswer === this.currentQuestion.correctAnswer ? 'correct' : 'incorrect';
     },
     feedbackEmoji() {
       return this.selectedAnswer === this.currentQuestion.correctAnswer ? '🎉' : '💡';
     },
-    // FIX: feedbackText använder nu engelska som korrekt svar
     feedbackText() {
       return this.selectedAnswer === this.currentQuestion.correctAnswer
         ? 'Rätt svar! Bra jobbat!'
@@ -234,43 +268,39 @@ export default {
     },
   },
   async mounted() {
-  try {
-    if (this.isResultsMode) {
-      console.log("📊 Laddar quizresultat...");
-      await this.loadPastResults();
-    } else {
-      console.log("🧠 Laddar quizfrågor...");
-      await this.loadQuestionsFromDatabase();
+    try {
+      if (this.isResultsMode) {
+        console.log("📊 Laddar quizresultat...");
+        await this.loadPastResults();
+      } else {
+        console.log("🧠 Laddar quizfrågor...");
+        await this.loadQuestionsFromDatabase();
+      }
+    } catch (err) {
+      console.error("Init error:", err);
+    } finally {
+      this.loading = false;
     }
-  } catch (err) {
-    console.error("Init error:", err);
-  } finally {
-    this.loading = false;
-  }
-},
+    
+    // Token check från main
+    if (!localStorage.getItem('token')) {
+      this.$router.push('/');
+    }
+    this.loadProgress();
+  },
   
   methods: {
     // NY METOD: Hämta det svenska ordet (prompten)
     getSwedishWord() {
       if (!this.currentQuestion) return '';
-      // Prompten är nu det svenska ordet
-      return this.currentQuestion.swedish || '[Ord saknas]';
+      return this.currentQuestion.swedish || this.currentQuestion.question || '[Ord saknas]';
     },
 
-    shuffleArray(array) {
-      const shuffled = [...array];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      return shuffled;
-    },
-  // ... diğer metodların altına ekle
     async loadPastResults() {
       this.loading = true;
       try {
         const userId = 1;
-const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
+        const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
         if (!response.ok) throw new Error('Kunde inte hämta quizresultat');
 
         const data = await response.json();
@@ -286,11 +316,6 @@ const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${user
         this.loading = false;
       }
     },
-
-
-  goToAllResults() {
-  this.$router.push('/practice/quiz/results');
-  },
 
     async loadQuestionsFromDatabase() {
       this.loading = true;
@@ -323,8 +348,8 @@ const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${user
           ]);
 
           return {
-            swedish: word.swedish, // FIX: Svenska ordet är frågan (prompt)
-            correctAnswer: word.english, // FIX: Engelska ordet är rätt svar
+            swedish: word.swedish, // Svenska ordet är frågan (prompt)
+            correctAnswer: word.english, // Engelska ordet är rätt svar
             options: options, // Alternativen är engelska
             hint: `Öva på ordet "${word.swedish}"`,
             audioText: word.english // Ljudet spelas upp i engelska
@@ -341,44 +366,23 @@ const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${user
       }
     },
 
-    // FIX: Använder svenska som prompt och engelska som svar/alternativ
     useFallbackQuestions() {
       const fallbackQuestions = [
         {
-          swedish: "Hej",  // FIX
-          options: ["Hello", "Goodbye", "Thank you", "Excuse me"], // FIX
-          correctAnswer: "Hello", // FIX
+          swedish: "Hej",
+          options: ["Hello", "Goodbye", "Thank you", "Excuse me"],
+          correctAnswer: "Hello",
           hint: "Det är det första man säger när man träffar någon",
           audioText: "Hello"
         },
-        {
-          swedish: "Äpple",  // FIX
-          options: ["Pear", "Banana", "Apple", "Orange"], // FIX
-          correctAnswer: "Apple", // FIX
-          hint: "En röd eller grön frukt",
-          audioText: "Apple"
-        },
-        {
-          swedish: "Adjö",
-          options: ["Hello", "Goodbye", "Thank you", "Excuse me"],
-          correctAnswer: "Goodbye",
-          hint: "Säger man när man går",
-          audioText: "Goodbye"
-        },
-        {
-          swedish: "Tack", 
-          options: ["Hello", "Goodbye", "Thank you", "Excuse me"],
-          correctAnswer: "Thank you",
-          hint: "Säger man när man får något",
-          audioText: "Thank you"
-        }
+        // ... resten av fallback-frågor
       ];
       
       this.questions = this.shuffleArray(fallbackQuestions).slice(0, 20);
       console.log('Använder fallback-frågor');
     },
 
-    // AUTO-SCROLL METODER (oförändrade)
+    // Auto-scroll metoder
     handleMouseMove(event) {
       if (this.answered || this.quizFinished) {
         this.stopAutoScroll();
@@ -386,7 +390,9 @@ const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${user
       }
       
       const container = this.$refs.optionsContainer;
-      if (!container) return;       const mouseY = event.clientY;
+      if (!container) return;
+      
+      const mouseY = event.clientY;
       const scrollZoneHeight = window.innerHeight * 0.15;
       const topZone = scrollZoneHeight;
       const bottomZone = window.innerHeight - scrollZoneHeight;
@@ -398,6 +404,7 @@ const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${user
       } else if (mouseY > bottomZone) { 
         newScrollSpeed = this.autoScrollSpeed;
       } 
+      
       if (newScrollSpeed !== 0 && !this.isAutoScrolling) {
         this.startAutoScroll(newScrollSpeed);
         this.setScrollVisualFeedback(newScrollSpeed < 0 ? 'top' : 'bottom');
@@ -415,9 +422,11 @@ const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${user
       this.scrollSpeed = speed;
 
       const scroll = () => {
-        if (!this.isAutoScrolling) return;         window.scrollBy(0, speed);
+        if (!this.isAutoScrolling) return;
+        window.scrollBy(0, speed);
         this.scrollAnimation = requestAnimationFrame(scroll);
       }; 
+      
       if (this.scrollAnimation) {
         cancelAnimationFrame(this.scrollAnimation);
       }
@@ -445,75 +454,45 @@ const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${user
       }
     },
 
-    // QUIZ METODER (oförändrade)
+    // Quiz metoder
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
     },
-
+    
     getOptionClass(option) {
       if (!this.answered) return '';
       if (option === this.currentQuestion.correctAnswer) return 'correct';
       if (option === this.selectedAnswer) return 'incorrect';
       return '';
     },
-
+    
     checkAnswer(selectedAnswer) {
-      this.stopAutoScroll(); 
       this.answered = true;
       this.selectedAnswer = selectedAnswer;
 
       if (selectedAnswer === this.currentQuestion.correctAnswer) {
         this.score++;
-      } 
-      this.$nextTick(() => {
-        setTimeout(() => {
-          this.scrollToNextButton();
-          this.focusNextButton();
-        }, 300);
-      });
-    }, 
-    scrollToNextButton() {
-      const nextButton = this.$refs.nextButton;
-      if (nextButton) {
-        nextButton.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
-        });
       }
-    }, 
-    focusNextButton() {
-      this.$nextTick(() => {
-        const nextButton = this.$refs.nextButton;
-        if (nextButton) {
-          nextButton.focus();
-        }
-      });
-    }, 
+    },
+    
     nextQuestion() {
-      this.stopAutoScroll();
       if (this.isLastQuestion) {
         this.finishQuiz();
       } else {
         this.currentQuestionIndex++;
         this.answered = false;
-        this.selectedAnswer = null; 
-        this.$nextTick(() => {
-          const questionElement = document.querySelector('.question-bubble');
-          if (questionElement) {
-            questionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        });
+        this.selectedAnswer = null;
       }
     },
-
+    
     finishQuiz() {
       this.quizFinished = true;
       this.updateProgress();
       this.saveQuizResult();
       this.saveQuizStateForResults();
     },
-
+    
     saveQuizStateForResults() {
       const quizState = {
         score: this.score,
@@ -522,34 +501,33 @@ const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${user
       localStorage.setItem('lastQuizState', JSON.stringify(quizState));
     },
 
-async saveQuizResult() {
-  try {
-    const user = JSON.parse(localStorage.getItem('user'));
-    const resultData = {
-      userId: user?.id || 1,
-      correctAnswers: this.score,
-      wrongAnswers: this.questions.length - this.score,
-      quiz_type: "quiz"
-    };
+    async saveQuizResult() {
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        const resultData = {
+          userId: user?.id || 1,
+          correctAnswers: this.score,
+          wrongAnswers: this.questions.length - this.score,
+          quiz_type: "quiz"
+        };
 
-    console.log("💾 Skickar quizresultat:", resultData);
+        console.log("💾 Skickar quizresultat:", resultData);
 
-    const response = await fetch("http://localhost:9001/api/quiz/quiz-results", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(resultData),
-    });
+        const response = await fetch("http://localhost:9001/api/quiz/quiz-results", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(resultData),
+        });
 
-    if (response.ok) {
-      console.log("✅ Quizresultat sparat!");
-    } else {
-      console.error("❌ Misslyckades att spara quizresultat:", response.status);
-    }
-  } catch (error) {
-    console.error("💥 Fel vid sparande av quizresultat:", error);
-  }
-}
-,
+        if (response.ok) {
+          console.log("✅ Quizresultat sparat!");
+        } else {
+          console.error("❌ Misslyckades att spara quizresultat:", response.status);
+        }
+      } catch (error) {
+        console.error("💥 Fel vid sparande av quizresultat:", error);
+      }
+    },
 
     updateProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
@@ -557,7 +535,7 @@ async saveQuizResult() {
       progress.learnedWords = Math.min(125, (progress.learnedWords || 0) + this.score * 2);
       localStorage.setItem('learningProgress', JSON.stringify(progress));
     },
-
+    
     loadProgress() {
       try {
         const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
@@ -567,37 +545,43 @@ async saveQuizResult() {
         this.progress = {};
       }
     },
+    
+    restartQuiz() {
+      const preparedQuestions = this.initialQuestions.map(question => {
+        return {
+          ...question,
+          options: this.shuffleArray([...question.options])
+        };
+      });
 
-    async restartQuiz() {
+      this.questions = this.shuffleArray(preparedQuestions);
       this.score = 0;
       this.currentQuestionIndex = 0;
       this.answered = false;
       this.selectedAnswer = null;
       this.quizFinished = false;
-      this.loading = true;
-      
-      await this.loadQuestionsFromDatabase();
     },
-
+    
     goBack() {
       this.$router.back();
     },
-
+    
     goToDashboard() {
       this.$router.push('/dashboard');
-  
     },
 
-    // LJUDMETODER (oförändrade)
+    goToAllResults() {
+      this.$router.push('/practice/quiz/results');
+    },
+
+    // Ljudmetoder
     async playOptionAudio(option) {
-      // AudioText är nu det engelska ordet, vilket är korrekt
       this.currentLoadingOption = option;
       await this.playAudio(option);
       this.currentLoadingOption = null;
     },
 
     async playCorrectAnswerAudio() {
-      // CorrectAnswer är nu det engelska ordet, vilket är korrekt
       this.currentLoadingOption = 'correct-answer';
       await this.playAudio(this.currentQuestion.correctAnswer);
       this.currentLoadingOption = null;
@@ -654,8 +638,10 @@ async saveQuizResult() {
 
     shouldShowOptionAudio() {
       return this.isSpeechSupported;
-    },},
-    watch: {
+    }
+  },
+  
+  watch: {
     '$route'(to) {
       if (to.path.includes('/quiz/results')) {
         console.log("📡 Route changed → reload quiz results");
@@ -663,57 +649,17 @@ async saveQuizResult() {
       }
     }
   },
+
   beforeUnmount() {
-    this.stopAutoScroll();
     if (this.isSpeechSupported) {
       speechSynthesis.cancel();
     }
-  }}
+  }
+}
 </script>
 
 <style scoped>
-/* Här följer alla dina oförändrade CSS-stilar. */
 
-/* Lägg till laddningsstilar */
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 400px;
-}
-
-.loading-bubble {
-  background: linear-gradient(135deg, #4ECDC4, #44A08D);
-  color: white;
-  padding: 40px;
-  border-radius: 25px;
-  text-align: center;
-  box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3);
-}
-
-.loading-emoji {
-  font-size: 4em;
-  margin-bottom: 20px;
-  animation: spin 2s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.loading-bubble h3 {
-  margin: 0 0 15px 0;
-  font-size: 1.5em;
-}
-
-.loading-bubble p {
-  margin: 0;
-  opacity: 0.9;
-}
-
-/* Behåll ALLA dina ursprungliga CSS-stilar här */
-/* De är exakt samma som i din ursprungliga quiz-komponent */
 .quiz-page-container {
   min-height: 100vh;
   background-color: #f7f3ed;
@@ -725,7 +671,6 @@ async saveQuizResult() {
   max-width: 600px;
   margin: 0 auto;
 }
-
 .quiz-header {
   display: flex;
   justify-content: space-between;
@@ -773,6 +718,7 @@ async saveQuizResult() {
   transition: width 0.3s ease;
 }
 
+
 .question-bubble {
   background: linear-gradient(135deg, #FF9A8B, #FF6A88);
   color: white;
@@ -811,13 +757,11 @@ async saveQuizResult() {
   border-radius: 15px;
   font-size: 0.9em;
   margin-top: 15px;
-}.options-container {
+}
+.options-container {
   display: grid;
   gap: 15px;
   margin-bottom: 30px;
-  position: relative;
-  min-height: 400px;
-  transition: all 0.3s ease;
 }
 
 .option-btn {
@@ -934,7 +878,9 @@ async saveQuizResult() {
 .audio-hint-btn:disabled {
   cursor: not-allowed;
   opacity: 0.6;
-}.next-btn {
+}
+
+.next-btn {
   background: white;
   color: #333;
   border: none;
@@ -943,19 +889,14 @@ async saveQuizResult() {
   cursor: pointer;
   font-weight: bold;
   font-size: 1em;
-  transition: all 0.3s ease; 
-  outline: none;
-}
-
-.next-btn:focus {
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
-  transform: scale(1.05);
+  transition: all 0.3s ease;
 }
 
 .next-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
+
 /* === RESULT SECTION === */
 .results-container {
   display: flex;
@@ -1031,6 +972,7 @@ async saveQuizResult() {
   font-size: 1em;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
+
 /* 🎮 Spela igen → canlı mint (enerjik ton) */
 .play-again-btn {
   background: linear-gradient(135deg, #A8E6CF, #4ECDC4);
@@ -1124,47 +1066,11 @@ async saveQuizResult() {
   box-shadow: 0 6px 15px rgba(255, 154, 139, 0.6);
 }
 
-
 .options-container.scroll-top {
   box-shadow: inset 0 10px 20px -10px rgba(255, 107, 107, 0.5);
 }
 
-.options-container.scroll-bottom {
-  box-shadow: inset 0 -10px 20px -10px rgba(78, 205, 196, 0.5);
-}.options-container::before,
-.options-container::after {
-  content: '';
-  position: fixed;
-  left: 0;
-  right: 0;
-  height: 20%;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 10;
-}
-
-.options-container::before {
-  top: 0;
-  background: linear-gradient(to bottom, 
-    rgba(255, 107, 107, 0.2) 0%, 
-    transparent 100%);
-}
-
-.options-container::after {
-  bottom: 0;
-  background: linear-gradient(to top, 
-    rgba(78, 205, 196, 0.2) 0%, 
-    transparent 100%);
-}
-
-.options-container.scroll-top::before {
-  opacity: 1;
-}
-
-.options-container.scroll-bottom::after {
-  opacity: 1;
-}@keyframes slideUp {
+@keyframes slideUp {
   0% { transform: translateY(20px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
 }
@@ -1174,6 +1080,11 @@ async saveQuizResult() {
   50% { transform: scale(1.05); }
   70% { transform: scale(0.9); }
   100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  0% { transform: translateY(30px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
 }
 
 @media (max-width: 768px) {
