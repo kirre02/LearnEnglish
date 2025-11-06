@@ -57,3 +57,6 @@ INSERT INTO quiz_results (user_id, correct_answers, wrong_answers) VALUES
 (1, 18, 2);
 
 
+ALTER TABLE quiz_results ADD COLUMN quiz_type VARCHAR(50);
+ALTER TABLE quiz_results ADD COLUMN quiz_type VARCHAR(50);
+
