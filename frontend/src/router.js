@@ -5,7 +5,8 @@ import WelcomePage from './components/WelcomePage.vue'
 import Quiz from './components/Quiz.vue'
 import QuizResults from './components/QuizResults.vue'  // Från gren 4
 import PracticeLayout from './components/practice/PracticeLayout.vue' // Från gren 5
-import Register from './pages/Register.vue' // Från gren 5
+import Register from './pages/Register.vue'
+import ProfileView from "@/pages/ProfileView.vue"; // Från gren 5
 
 const routes = [
   {
@@ -26,7 +27,9 @@ const routes = [
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: Dashboard  },  {
+    component: Dashboard
+  },
+  {
     path: '/quiz',
     name: 'Quiz',
     component: Quiz
@@ -42,7 +45,13 @@ const routes = [
     path: '/practice/:type',
     name: 'Practice',
     component: PracticeLayout,
-    props: true  }
+    props: true
+  },
+  {
+    path: '/profile',
+    name: 'profile',
+    component: ProfileView
+  }
 ]
 
 const router = createRouter({

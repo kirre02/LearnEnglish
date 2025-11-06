@@ -8,13 +8,11 @@
         <span class="label">ord lärt!</span>
       </div>
 
-      <!-- Hamburgarknapp -->
       <button class="menu-toggle" @click.stop="toggleMenu" aria-label="Meny">
         <span class="hamburger" :class="{ active: menuOpen }"></span>
       </button>
     </div>
 
-    <!-- Flytande meny med samma bredd som bubblan -->
     <transition name="fade-slide">
       <div v-if="menuOpen" class="floating-menu">
         <button class="menu-item" @click.stop="$emit('show-profile')">Profil</button>

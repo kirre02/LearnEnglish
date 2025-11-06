@@ -18,9 +18,8 @@
 
         <UserInfoBubble
           :learnedWords="learnedWords" 
-          @logout="handleLogout" 
-          @show-results="goToResults"
-          @show-settings="goToSettings" />
+          @logout="handleLogout"
+          @show-settings="goToProfile" />
       </div>
 
     </div>
@@ -202,11 +201,8 @@ export default {
       localStorage.removeItem('user');
       this.$router.push('/');
     },
-    goToResults() {
-      this.$router.push('/results');
-    },
-    goToSettings() {
-      this.$router.push('/settings');
+    goToProfile() {
+      this.$router.push('/profile');
     },
     navigateToSection(section) {
       alert(`Öppnar ${section} - kommer snart!`);
