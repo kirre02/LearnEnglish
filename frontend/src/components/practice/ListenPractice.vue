@@ -2,7 +2,7 @@
   <div class="practice-page listen-practice">
     <div class="practice-container">
       <!-- Header -->
-      <div class="practice-header">
+      <div  v-if="!isResultsMode && !practiceFinished" class="practice-header">
         <button @click="goBack" class="back-btn">← Tillbaka</button>
         <div class="progress-info">
           <span class="progress-text">Fråga {{ currentQuestionIndex + 1 }} av {{ questions.length }}</span>
@@ -11,9 +11,36 @@
           </div>
         </div>
       </div>
+<!-- 📊 RESULT MODE (visas när man går till /practice/listen/results) -->
+<div v-if="isResultsMode" class="results-page">
+  <h2 class="results-title">🎧 Dina lyssningsresultat</h2>
+  
+  <table v-if="results.length" class="results-table">
+    <thead>
+      <tr>
+        <th>Datum</th>
+        <th>Poäng</th>
+        <th>Totalt</th>
+        <th>Procent</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="(r, index) in results" :key="index">
+        <td>{{ new Date(r.date).toLocaleDateString('sv-SE') }}</td>
+        <td>{{ r.score }}</td>
+        <td>{{ r.total }}</td>
+        <td>{{ Math.round((r.score / r.total) * 100) }}%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p v-else class="no-results">Inga resultat ännu. Gör en övning först 🎧</p>
+
+  <button @click="goBack" class="action-btn results-back-btn">⬅️ Tillbaka</button>
+</div>
 
       <!-- Laddningsskärm -->
-      <div v-if="loading" class="loading-container">
+<div v-if="loading && !isResultsMode" class="loading-container">
         <div class="loading-bubble">
           <div class="loading-emoji">⏳</div>
           <h3>Hämtar övningsord...</h3>
@@ -22,7 +49,7 @@
       </div>
 
       <!-- Practice Content -->
-      <div v-else class="practice-content">
+<div v-else-if="!isResultsMode && !practiceFinished" class="practice-content">
         <div class="question-section">
           <button @click="playQuestionAudio" class="audio-btn-large" :disabled="audioLoading">
             <span v-if="audioLoading">⏳</span>
@@ -33,6 +60,7 @@
         </div>
 
         <div 
+          v-if="currentQuestion && currentQuestion.options"
           class="options-container"
           @mousemove="handleMouseMove"
           ref="optionsContainer"
@@ -50,7 +78,7 @@
           </button>
         </div>
 
-        <div v-if="answered" class="feedback-section">
+        <div v-if="answered && !practiceFinished" class="feedback-section">
           <div class="feedback-bubble" :class="feedbackClass">
             <div class="feedback-emoji">{{ feedbackEmoji }}</div>
             <div class="feedback-text">{{ feedbackText }}</div>
@@ -61,6 +89,27 @@
               @keydown.enter.space="nextQuestion"
               tabindex="0">
               {{ isLastQuestion ? 'Avsluta övning' : 'Nästa fråga' }} →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="practiceFinished" class="results-container">
+        <div class="results-bubble" :class="resultsClass">
+          <div class="results-emoji">{{ resultsEmoji }}</div>
+          <h2>{{ resultsTitle }}</h2>
+          <p class="results-score">{{ score }} av {{ questions.length }} rätt!</p>
+          <p class="results-message">{{ resultsMessage }}</p>
+
+          <div class="results-actions">
+            <button @click="restartQuiz" class="action-btn play-again-btn">
+              🎮 Spela igen
+            </button>
+            <button @click="goToAllResults" class="action-btn results-btn">
+              📊 Se alla resultat
+            </button>
+            <button @click="goToDashboard" class="action-btn dashboard-btn">
+              🏠 Till dashboard
             </button>
           </div>
         </div>
@@ -83,6 +132,9 @@ export default {
       questions: [],
       loading: true,
       allWords: [], // Lagra alla ord från databasen
+      practiceFinished: false,
+      results: [],
+
       
       // DATA FÖR AUTO-SCROLL
       autoScrollSpeed: 4,
@@ -113,13 +165,72 @@ export default {
         ? 'Rätt svar! Bra jobbat!' 
         : `Rätt svar är: ${this.currentQuestion.options.find(opt => opt.correct).text}`;
     },
+    isResultsMode() {
+  return this.$route.path.includes('results');
+},
+
+    resultsClass() {
+      const percentage = (this.score / this.questions.length) * 100;
+      if (percentage >= 80) return 'excellent';
+      if (percentage >= 60) return 'good';
+      return 'ok';
+    },
+    resultsEmoji() {
+      const percentage = (this.score / this.questions.length) * 100;
+      if (percentage >= 80) return '🏆';
+      if (percentage >= 60) return '⭐';
+      return '👍';
+    },
+    resultsTitle() {
+      const percentage = (this.score / this.questions.length) * 100;
+      if (percentage >= 80) return 'Fantastiskt!';
+      if (percentage >= 60) return 'Bra jobbat!';
+      return 'Bra försök!';
+    },
+    resultsMessage() {
+      const percentage = (this.score / this.questions.length) * 100;
+      if (percentage >= 80) return 'Du är en riktig engelskexpert!';
+      if (percentage >= 60) return 'Du kan mycket engelska!';
+      return 'Fortsätt öva, du blir bättre!';
+    },
     isCorrect() {
       return this.selectedAnswer?.correct === true;
     }
   },
-  async mounted() {
-    await this.loadQuestionsFromDatabase();
-  },
+ async mounted() {
+  try {
+    if (this.isResultsMode) {
+      const latestScore = this.$route.query.latestScore;
+      const total = this.$route.query.total;
+
+      // Her zaman geçmiş sonuçları yükle
+      if (typeof this.loadPastResults === "function") {
+        await this.loadPastResults();
+      }
+
+      // Eğer yeni sonuç da varsa, en üste ekle
+      if (latestScore && total) {
+        this.results.unshift({
+          date: new Date(),
+          score: Number(latestScore),
+          total: Number(total)
+        });
+      }
+    } else {
+      await this.loadQuestionsFromDatabase();
+      if (!this.questions || this.questions.length === 0) {
+        this.useFallbackQuestions();
+      }
+      this.loading = false;
+    }
+  } catch (err) {
+    console.error("❌ Fel vid initiering:", err);
+    this.useFallbackQuestions();
+    this.loading = false;
+  }
+},
+
+
   methods: {
     // Funktion för att blanda array (Fisher-Yates shuffle)
     shuffleArray(array) {
@@ -189,6 +300,8 @@ export default {
         this.loading = false;
       }
     },
+
+    
 
     useFallbackQuestions() {
       const fallbackQuestions = [
@@ -292,6 +405,30 @@ export default {
         this.audioLoading = false;
       }
     },
+async loadPastResults() {
+  this.loading = true;
+  try {
+    const userId = 1;
+    const response = await fetch(`http://localhost:9001/api/results/${userId}`);
+
+    if (!response.ok) {
+      throw new Error(`Kunde inte hämta resultat: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("🎯 Fetched results:", data); // <-- ekle bunu test için
+
+    this.results = data
+      .filter(r => !r.quiz_type || r.quiz_type.toLowerCase() === "listen")
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+  } catch (err) {
+    console.error("❌ Fel vid hämtning av resultat:", err);
+    this.results = [];
+  } finally {
+    this.loading = false;
+  }
+},
+
 
     // AUTO-SCROLL METODER
     handleMouseMove(event) {
@@ -420,10 +557,48 @@ export default {
       }
     },
 
-    finishPractice() {
-      this.savePracticeProgress();
-      alert(`Övning avslutad! 🎉\nDu fick ${this.score} av ${this.questions.length} rätt!`);
-      this.$router.push('/dashboard');
+  // finishPractice() {
+    // this.savePracticeProgress();
+      //alert(`Övning avslutad! 🎉\nDu fick ${this.score} av ${this.questions.length} rätt!`);
+      //this.$router.push('/dashboard');
+    //},
+   async finishPractice() {
+  this.practiceFinished = true;
+  this.savePracticeProgress();
+
+  try {
+    const resultData = {
+      userId: 1,
+      score: this.score,
+      total: this.questions.length,
+      duration_seconds: this.time || 0,
+      quiz_type: "listen"
+    };
+
+    const res = await fetch('http://localhost:9001/api/results', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(resultData)
+    });
+
+    if (res.ok) {
+      console.log("✅ Result saved to DB");
+      // 🚫 Artık yönlendirme yok! 
+      // Kullanıcı kendi "Se alla resultat" butonuna tıklayana kadar burada kalacak.
+    } else {
+      console.error("❌ Failed to save result:", res.status);
+    }
+  } catch (err) {
+    console.error("Error saving result:", err);
+  }
+}
+,
+    saveQuizStateForResults() {
+      const quizState = {
+        score: this.score,
+        questionsLength: this.questions.length
+      };
+      localStorage.setItem('lastQuizState', JSON.stringify(quizState));
     },
 
     savePracticeProgress() {
@@ -432,14 +607,29 @@ export default {
       progress.learnedWords = Math.min(125, (progress.learnedWords || 0) + this.score);
       localStorage.setItem('learningProgress', JSON.stringify(progress));
     },
+    goToAllResults() {
+    this.$router.push('/practice/listen/results');
+  },
+   goToDashboard() {
+    this.$router.push('/dashboard');},
 
     goBack() {
       this.$router.back();
     }
-  },
+  }
+  ,
   beforeUnmount() {
     this.stopAutoScroll();
   }
+  ,watch: {
+  '$route'(to, from) {
+    if (to.path.includes('/practice/listen/results')) {
+      console.log('📡 Route changed to results, reloading...');
+      this.loadPastResults();
+    }
+  }
+},
+
 }
 </script>
 
@@ -481,6 +671,7 @@ export default {
   margin: 0;
   opacity: 0.9;
 }
+
 
 /* Behåll alla dina ursprungliga CSS-stilar här */
 .practice-page {
@@ -746,5 +937,177 @@ export default {
   .options-container {
     min-height: 300px;
   }
+
 }
+
+ /* === RESULT SECTION (renkli ve dinamik) === */
+.results-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  margin-top: 20px;
+}
+
+.results-bubble {
+  color: white;
+  padding: 50px 40px;
+  border-radius: 30px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  width: 90%;
+  animation: fadeInUp 0.7s ease-out;
+}
+
+/* 🔥 Renk temaları */
+/* 🔥 Renk temaları */
+.results-bubble.excellent {
+  background: linear-gradient(135deg, #42E695, #3BB2B8);
+}
+
+.results-bubble.good {
+  background: linear-gradient(135deg, #FAD961, #F76B1C);
+}
+
+.results-bubble.ok {
+  background: linear-gradient(135deg, #FF9A9E, #FAD0C4);
+}
+
+
+.results-emoji {
+  font-size: 3.5em;
+  margin-bottom: 15px;
+}
+
+.results-bubble h2 {
+  font-size: 2em;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.results-score {
+  font-weight: bold;
+  font-size: 1.3em;
+  margin-bottom: 10px;
+}
+
+.results-message {
+  font-size: 1.1em;
+  opacity: 0.95;
+  margin-bottom: 30px;
+}
+
+.results-actions {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  border: none;
+  padding: 12px 25px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  color: white;
+  transition: all 0.3s ease;
+  font-size: 1em;
+}
+
+.play-again-btn {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.results-btn {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dashboard-btn {
+ background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.action-btn:hover {
+  opacity: 0.95;
+  transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+}
+
+
+@keyframes fadeInUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.results-page {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.results-title {
+  font-size: 1.8em;
+  margin-bottom: 25px;
+}
+
+.results-table {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto 30px;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.results-table th, .results-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.results-table th {
+  background: #4ECDC4;
+  color: white;
+}
+
+.results-table tr:last-child td {
+  border-bottom: none;
+}
+
+.no-results {
+  color: #666;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+.results-back-btn {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1em;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 10px rgba(78, 205, 196, 0.4);
+  margin-top: 25px;
+}
+
+.results-back-btn:hover {
+  transform: translateY(-3px);
+  background: linear-gradient(135deg, #44A08D, #4ECDC4);
+  box-shadow: 0 6px 15px rgba(78, 205, 196, 0.6);
+
+}
+
+
+
 </style>

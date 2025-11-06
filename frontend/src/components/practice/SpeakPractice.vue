@@ -1,7 +1,9 @@
 <template>
   <div class="practice-page speak-practice">
     <div class="practice-container">
-      <div class="practice-header">
+
+      <!-- HEADER -->
+      <div class="practice-header" v-if="!isResultsMode">
         <button 
           @click="goToPreviousWord" 
           class="back-btn"
@@ -9,20 +11,19 @@
         >
           ← Föregående
         </button>
+
         <div class="progress-info">
           <span class="progress-text">Ord {{ currentWordIndex + 1 }} av {{ words.length }}</span>
           <div class="progress-bar">
             <div class="progress-fill" :style="progressBarStyle"></div>
           </div>
         </div>
-        
-        <button @click="cancelPractice" class="cancel-btn">
-          🏠 Avbryt
-        </button>
+
+        <button @click="cancelPractice" class="cancel-btn">🏠 Avbryt</button>
       </div>
 
-      <!-- Laddningsskärm -->
-      <div v-if="loading" class="loading-container">
+      <!-- 🔄 LADDNING -->
+      <div v-if="loading && !isResultsMode" class="loading-container">
         <div class="loading-bubble">
           <div class="loading-emoji">⏳</div>
           <h3>Hämtar ord...</h3>
@@ -30,175 +31,189 @@
         </div>
       </div>
 
-      <div v-else class="practice-content">
-        <div class="word-section">
+      <!-- 🎤 PRACTICE SECTION -->
+      <div v-else-if="!isResultsMode && !practiceFinished" class="practice-content">
+
+        <div v-if="currentWord" class="word-section">
           <div class="word-card">
             <div class="word-english">
               <h2>{{ currentWord.english }}</h2>
-              <button @click="playWordAudio" class="audio-btn" :disabled="audioLoading">
-                <span v-if="audioLoading">⏳</span>
-                <span v-else>🔊</span>
+              <button 
+                @click="playWordAudio" 
+                class="audio-btn"
+                :disabled="audioLoading">
+                🔊
               </button>
             </div>
             <div class="word-translation">
               <p>{{ currentWord.swedish }}</p>
             </div>
           </div>
-        </div>
 
-        <div class="recognition-section">
-          <div class="recognition-controls">
-            <button 
-              @click="toggleRecognition" 
-              class="record-btn"
-              :class="{ 
-                recording: isListening, 
-                success: recognitionSuccess,
-                error: recognitionError && hasAttempted && !recognitionSuccess
-              }"
-              :disabled="audioLoading || recognitionLoading || currentWord.completed"
-            >
-              <span v-if="recognitionLoading">⏳</span>
-              <span v-else-if="isListening" class="pulse-animation">🎤●</span>
-              <span v-else-if="recognitionSuccess">✅</span>
-              <span v-else-if="recognitionError && hasAttempted">❌</span>
-              <span v-else-if="currentWord.completed">🔒</span>
-              <span v-else>🎤</span>
-            </button>
-            
-            <div class="recognition-status">
-              <p v-if="!hasAttempted && !isListening && !currentWord.completed" class="instruction">
-                Tryck på mikrofonen och säg ordet på engelska
-              </p>
-              
-              <!-- Uppspelningsknapp för inspelning -->
-              <div v-if="currentWord.completed && currentWord.audioUrl" class="playback-controls">
-                <button @click="playRecording(currentWord.audioUrl)" class="play-recording-btn">
-                  ▶️ Spela upp ditt uttal
-                </button>
+          <!-- 🎙️ Speech recognition -->
+          <div class="recognition-section">
+            <div class="recognition-controls">
+              <button
+                @click="toggleRecognition"
+                class="record-btn"
+                :class="{ recording: isListening, success: recognitionSuccess, error: recognitionError }"
+                :disabled="audioLoading || recognitionLoading || currentWord.completed"
+              >
+                <span v-if="recognitionLoading">⏳</span>
+                <span v-else-if="isListening" class="pulse-animation">🎤●</span>
+                <span v-else-if="recognitionSuccess">✅</span>
+                <span v-else-if="recognitionError && hasAttempted">❌</span>
+                <span v-else>🎤</span>
+              </button>
+
+              <div class="recognition-status">
+                <p v-if="!hasAttempted && !isListening && !currentWord.completed" class="instruction">
+                  Tryck på mikrofonen och säg ordet på engelska
+                </p>
+
+                <div v-if="currentWord.completed && currentWord.audioUrl" class="playback-controls">
+                  <button @click="playRecording(currentWord.audioUrl)" class="play-recording-btn">
+                    ▶️ Spela upp ditt uttal
+                  </button>
+                </div>
+
+                <p v-if="isListening" class="listening">🎯 Lyssnar... <strong>{{ listeningTime }}s</strong></p>
+                <p v-if="userSpeech && !isListening && !currentWord.completed" class="user-speech">
+                  Du sa: "<strong>{{ userSpeech }}</strong>"
+                </p>
+                <p v-if="hasAttempted && !isListening && !recognitionSuccess && !currentWord.completed" class="try-again">
+                  Försök igen! Rätt svar är "<strong>{{ currentWord.english }}</strong>"
+                </p>
+                <p v-if="recognitionSuccess && !currentWord.completed" class="success">
+                  🎉 Perfekt! "<strong>{{ userSpeech }}</strong>"
+                </p>
               </div>
-              
-              <p v-if="currentWord.completed" class="completed">
-                <span v-if="currentWord.success">✅ Avklarat: Korrekt uttal!</span>
-                <span v-else>❌ Avklarat: "<strong>{{ currentWord.userAnswer }}</strong>"</span>
-              </p>
-              <p v-if="isListening" class="listening">
-                🎯 Lyssnar... <strong>{{ listeningTime }}s</strong>
-              </p>
-              <p v-if="userSpeech && !isListening && !currentWord.completed" class="user-speech">
-                Du sa: "<strong>{{ userSpeech }}</strong>"
-              </p>
-              <p v-if="hasAttempted && !isListening && !recognitionSuccess && !currentWord.completed" class="try-again">
-                Försök igen! Rätt svar är "<strong>{{ currentWord.english }}</strong>"
-              </p>
-              <p v-if="recognitionSuccess && !currentWord.completed" class="success">
-                🎉 Perfekt! "<strong>{{ userSpeech }}</strong>"
-              </p>
             </div>
-          </div>
 
-          <!-- Feedback med auto-focus funktioner -->
-          <div v-if="showFeedback && !currentWord.completed" class="feedback-section">
-            <div class="feedback-bubble" :class="feedbackClass">
-              <div class="feedback-emoji">{{ feedbackEmoji }}</div>
-              <div class="feedback-text">{{ feedbackText }}</div>
-              <div class="feedback-actions">
-                <button 
-                  v-if="!recognitionSuccess"
-                  @click="tryAgain" 
-                  class="action-btn try-again-btn"
-                  ref="tryAgainButton"
-                  @keydown.enter="tryAgain"
-                  @keydown.space="tryAgain"
-                  tabindex="0">
-                  🔄 Försök igen
-                </button>
-                <button 
-                  @click="nextWord" 
-                  class="action-btn next-btn"
-                  ref="nextButton"
-                  @keydown.enter="nextWord"
-                  @keydown.space="nextWord"
-                  tabindex="0">
-                  {{ isLastWord ? 'Avsluta övning' : 'Nästa ord' }} →
-                </button>
+            <!-- 🎯 Feedback-bubbla -->
+            <div v-if="showFeedback && !currentWord.completed" class="feedback-section">
+              <div class="feedback-bubble" :class="feedbackClass">
+                <div class="feedback-emoji">{{ feedbackEmoji }}</div>
+                <div class="feedback-text">{{ feedbackText }}</div>
+
+                <div class="feedback-actions">
+                  <button 
+                    v-if="!recognitionSuccess" 
+                    @click="tryAgain"
+                    class="action-btn try-again-btn"
+                    ref="tryAgainButton">
+                    🔄 Försök igen
+                  </button>
+                  <button 
+                    @click="nextWord" 
+                    class="action-btn next-btn"
+                    ref="nextButton">
+                    {{ isLastWord ? 'Avsluta övning' : 'Nästa ord' }} →
+                  </button>
+                </div>
               </div>
             </div>
           </div>
+
+          <!-- NAVIGATION -->
+         <!-- 🔄 Navigation controls (tek "Avsluta" butonu olacak) -->
+<div v-if="currentWord.completed" class="navigation-controls">
+  <div class="nav-buttons">
+    <!-- ⬅️ Geri butonu -->
+    <button 
+      @click="goToPreviousWord" 
+      class="nav-btn prev-btn"
+      :disabled="currentWordIndex === 0">
+      ← Föregående
+    </button>
+
+    <!-- ⏭️ Sıradaki kelime butonu -->
+    <button 
+      v-if="!isLastWord"
+      @click="nextWord" 
+      class="nav-btn next-btn">
+      Nästa ord →
+    </button>
+
+    <!-- 🏁 Sadece son kelimede gösterilecek -->
+    <button 
+      v-else
+      @click="finishPractice"
+      class="nav-btn finish-btn">
+      ✅ Avsluta övning    </button>
+  </div>
+</div>
+
         </div>
 
-        <!-- Navigation controls med auto-focus -->
-        <div v-if="currentWord.completed" class="navigation-controls">
-          <div class="nav-buttons">
-            <button 
-              @click="goToPreviousWord" 
-              class="nav-btn prev-btn"
-              :disabled="currentWordIndex === 0"
-              ref="prevButton"
-              @keydown.enter="goToPreviousWord"
-              @keydown.space="goToPreviousWord"
-              tabindex="0"
-            >
-              ← Föregående ord
-            </button>
-            <button 
-              @click="nextWord" 
-              class="nav-btn next-btn"
-              ref="nextNavButton"
-              @keydown.enter="nextWord"
-              @keydown.space="nextWord"
-              tabindex="0"
-            >
-              {{ isLastWord ? 'Avsluta' : 'Nästa ord' }} →
-            </button>
-            <button 
-              v-if="isLastWord" 
-              @click="finishPractice" 
-              class="nav-btn finish-btn"
-              ref="finishButton"
-              @keydown.enter="finishPractice"
-              @keydown.space="finishPractice"
-              tabindex="0"
-            >
-              🏁 Avsluta övning
-            </button>
-          </div>
-        </div>
-
-        <!-- Tips section med auto-scroll -->
-        <div 
-          class="tips-section"
-          @mousemove="handleMouseMove"
-          ref="tipsContainer"
-          @mouseleave="stopAutoScroll"
-        >
-          <div class="tip-bubble">
-            <div class="tip-emoji">💡</div>
-            <div class="tip-content">
-              <strong>Tips för bättre igenkänning:</strong>
-              <ul>
-                <li>🎯 Tala tydligt och i normal takt</li>
-                <li>🔇 Håll bakgrundsljud till minimum</li>
-                <li>🎧 Använd headset för bäst resultat</li>
-                <li>🗣️ Uttala ordet exakt som det ska låta</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="!isSpeechSupported" class="browser-warning">
-          <div class="warning-bubble">
-            <div class="warning-emoji">⚠️</div>
-            <div class="warning-content">
-              <strong>Röstigenkänning stöds inte i din webbläsare</strong>
-              <p>För bästa resultat, använd Chrome eller Edge. Just nu fungerar endast inspelning utan igenkänning.</p>
-            </div>
-          </div>
-        </div>
+        <p v-else>Inga ord tillgängliga</p>
       </div>
+
+<!--<div v-if="isResultsMode" class="results-page">
+  <div v-if="results.length > 0" class="result-card">
+    <div class="trophy">🏆</div>
+    <h2 class="result-title">Fantastiskt!</h2>
+
+    <p class="result-score">
+      Du hade {{ correctAnswers }} rätt av {{ totalQuestions }}!    
+       <br />
+  <span class="percentage-text">{{ percentage }}% korrekt!</span>
+    </p>
+
+    <p class="result-subtitle">
+      Du är en riktig engelskexpert! 🇬🇧✨
+    </p>
+
+    <div class="result-actions">
+      <button @click="restartGame" class="action-btn replay-btn">🎮 Spela igen</button>
+      <button @click="goToAllResults" class="action-btn results-btn">📊 Se alla resultat</button>
+      <button @click="goBack" class="action-btn dashboard-btn">🏠 Till dashboard</button>
+    </div>
+  </div>
+  <div v-else-if="isResultsMode" class="results-page" style="text-align:center;color:#666;margin-top:40px;">
+  Inga resultat ännu. Gör en övning först 🎤
+</div>
+</div>
+ Güvenli fallback (hiç veri yoksa)-->
+ <!-- 📊 RESULT MODE (visas när man går till /practice/speak/results) -->
+<div v-if="isResultsMode" class="results-page">
+  <h2 class="results-title">🎤 Dina uttalsresultat</h2>
+
+  <div v-if="latestScore && total" class="latest-result">
+    <p>Senaste resultat: <strong>{{ latestScore }}/{{ total }}</strong></p>
+<p>Procent: <strong>{{ Math.round((latestScore / (total * 10)) * 100) }}%</strong></p>
+  </div>
+
+  <table v-if="results.length" class="results-table">
+    <thead>
+      <tr>
+        <th>Datum</th>
+        <th>Poäng</th>
+        <th>Totalt</th>
+        <th>Procent</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-for="(r, index) in results" :key="index">
+        <td>{{ new Date(r.date).toLocaleDateString('sv-SE') }}</td>
+        <td>{{ r.score }}</td>
+        <td>{{ r.total }}</td>
+<td>{{ Math.round((r.score / (r.total * 10)) * 100) }}%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p v-else class="no-results">Inga resultat ännu. Gör en uttalsövning först 🎤</p>
+
+  <button @click="goBack" class="action-btn dashboard-btn">⬅️ Tillbaka</button>
+</div>
+
+
     </div>
   </div>
 </template>
+
+
 
 <script>
 export default {
@@ -224,7 +239,13 @@ export default {
       mediaRecorder: null,
       audioChunks: [],
       isSpeechSupported: 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window,
-      
+
+      practiceFinished: false,
+      results: [],
+latestScore: null,
+total: null,
+    correctCount: 0,
+    totalCount: 0,
       // DATA FÖR AUTO-SCROLL
       autoScrollSpeed: 4,
       isAutoScrolling: false,
@@ -243,6 +264,26 @@ export default {
       const progress = ((this.currentWordIndex + 1) / this.words.length) * 100;
       return { width: `${progress}%` };
     },
+    isResultsMode() {
+    return this.$route.path.includes('results');
+  },
+  percentage() {
+    if (!this.results.length) return 0;
+    return Math.min(
+      Math.round((this.results[0].score / (this.results[0].total * 10)) * 100),
+      100
+    );
+  },
+  correctAnswers() {
+    if (!this.results.length) return 0;
+    return Math.round(this.results[0].score / 10);
+  },
+  totalQuestions() {
+    return this.results.length ? this.results[0].total : 0;
+  },
+  showAll() {
+    return this.$route.query.show === 'all';
+  },
     feedbackClass() {
       return this.recognitionSuccess ? 'correct' : 'incorrect'; 
     },
@@ -301,6 +342,26 @@ export default {
       }
     },
 
+    async loadPastResults() {
+  this.loading = true;
+  try {
+    const userId = 1;
+    const response = await fetch(`http://localhost:9001/api/results/${userId}`);
+    if (!response.ok) throw new Error("Kunde inte hämta resultat");
+    const data = await response.json();
+    console.log("🎯 Speak results från backend:", data);
+    this.results = data
+      .filter(r => r.quiz_type && r.quiz_type.toLowerCase() === "speak")
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+  } catch (err) {
+    console.error("❌ Fel vid hämtning av speak-resultat:", err);
+    this.results = [];
+  } finally {
+    this.loading = false;
+  }
+},
+
+
     useFallbackWords() {
       const fallbackWords = [
         { english: "Hello", swedish: "Hej" },
@@ -333,6 +394,9 @@ export default {
       }));
 
       console.log('Använder fallback-ord för uttalsövning');
+
+        this.loading = false;
+
     },
 
     // AUTO-SCROLL METODER
@@ -369,6 +433,25 @@ export default {
         this.setScrollVisualFeedback(newScrollSpeed < 0 ? 'top' : 'bottom');
       }
     },
+ restartGame() {
+    this.currentWordIndex = 0;
+    this.score = 0;
+    this.practiceFinished = false;
+    this.words.forEach(word => {
+      word.completed = false;
+      word.success = false;
+      word.userAnswer = '';
+      word.audioUrl = null;
+    });
+  },
+
+  goBack() {
+    this.$router.push('/dashboard');
+  },
+
+  goToAllResults() {
+  this.$router.push({ path: '/practice/speak/results'});
+  },
 
     startAutoScroll(speed) {
       this.isAutoScrolling = true;
@@ -771,13 +854,49 @@ export default {
       this.recognitionLoading = false;
     },
 
-    finishPractice() {
-      this.stopAutoScroll();
-      this.saveProgress();
-      const correctWords = this.words.filter(w => w.success).length;
-      alert(`Övning avslutad! 🎉\nDu fick ${correctWords} av ${this.words.length} ord rätt!\nTotalpoäng: ${this.score}`);
-      this.$router.push('/dashboard');
-    },
+    //finishPractice() {
+    //  this.stopAutoScroll();
+    //  this.saveProgress();
+    //  const correctWords = this.words.filter(w => w.success).length;
+     // alert(`Övning avslutad! 🎉\nDu fick ${correctWords} av ${this.words.length} ord rätt!\nTotalpoäng: ${this.score}`);
+     // this.$router.push('/dashboard');
+    //},
+   async finishPractice() {
+  this.practiceFinished = true;
+  try {
+    const resultData = {
+      userId: 1,
+      score: this.score,
+      total: this.words.length,
+      duration_seconds: this.time || 0,
+      quiz_type: "speak"
+    };
+
+    const res = await fetch('http://localhost:9001/api/results', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(resultData)
+    });
+
+    if (res.ok) {
+      console.log("✅ Speak result saved!");
+      this.$router.push({ 
+        path: '/practice/speak/results',
+        query: { 
+          latestScore: resultData.score, 
+          total: resultData.total 
+        }
+      });
+    } else {
+      console.error("❌ Failed to save result", res.status);
+    }
+  } catch (err) {
+    console.error("❌ Error saving speak result:", err);
+  }
+}
+,
+
+
 
     saveProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
@@ -789,13 +908,14 @@ export default {
   },
 
   async mounted() {
+  if (this.isResultsMode) {
+    this.latestScore = this.$route.query.latestScore || null;
+    this.total = this.$route.query.total || null;
+    await this.loadPastResults();
+  } else {
     await this.loadWordsFromDatabase();
-    
-    if (this.isSpeechSupported) {
-      this.recognition = this.initSpeechRecognition();
-    }
-    this.loadWordState();
-  },
+  }
+},
 
   beforeUnmount() {
     this.stopRecognition();
@@ -846,6 +966,64 @@ export default {
 .loading-bubble p {
   margin: 0;
   opacity: 0.9;
+}
+.results-page {
+  text-align: center;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #d7f8f3, #b3f0e6);
+  border-radius: 25px;
+  margin-top: 20px;
+}
+
+.results-title {
+  font-size: 1.8em;
+  margin-bottom: 25px;
+}
+
+.results-table {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto 30px;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.results-table th, .results-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.results-table th {
+  background: linear-gradient(135deg, #42E695, #3BB2B8);
+  color: white;
+}
+
+.results-table tr:last-child td {
+  border-bottom: none;
+}
+
+.no-results {
+  color: #666;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+
+.dashboard-btn {
+  background: linear-gradient(135deg, #11998e, #38ef7d);
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 25px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.dashboard-btn:hover {
+  background: linear-gradient(135deg, #0f8a7d, #2fd672);
+  transform: scale(1.05);
 }
 
 /* Behåll alla ursprungliga CSS-stilar */
@@ -1038,8 +1216,18 @@ export default {
 }
 
 .record-btn.error {
-  background: linear-gradient(135deg, #FF6B6B, #FF5252);
-  color: white;
+background: linear-gradient(135deg, #A8E6CF, #9ED2C6);
+  color: #222; /* 🖤 koyu gri/siyah X */
+  border: none;
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  font-size: 2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(78, 205, 196, 0.3);
+  transition: all 0.3s ease;
 }
 
 .record-btn:disabled {
@@ -1091,6 +1279,40 @@ export default {
   color: #4ECDC4;
   font-weight: bold;
 }
+.percentage-text {
+  display: block;
+  font-size: 0.7em;
+  opacity: 0.9;
+  margin-top: 5px;
+}
+
+.btn-coral {
+  background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+}
+
+.btn-green {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+}
+
+.speak-btn {
+  color: white;
+  border: none;
+  border-radius: 25px;
+  padding: 12px 25px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.speak-btn:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+
 
 .completed {
   color: #4ECDC4;
@@ -1107,7 +1329,7 @@ export default {
 }
 
 .play-recording-btn {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+background: linear-gradient(135deg, #FF8E8E, #FF6B6B);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -1234,24 +1456,50 @@ export default {
 }
 
 .prev-btn {
-  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+  background: linear-gradient(135deg, #FF6B6B, #FF8E53);
   color: white;
 }
 
 .next-btn {
-  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  background: linear-gradient(135deg, #FF6B6B, #FF8E53);
   color: white;
 }
 
 .finish-btn {
-  background: linear-gradient(135deg, #FFD700, #FF8E00);
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
   color: white;
 }
+
 
 .nav-btn:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
+.prev-btn, .cancel-btn {
+  background: linear-gradient(135deg, #FF8E53, #FF6B6B);
+  color: white;
+}
+
+.finish-btn {
+  background: linear-gradient(135deg, #88d8b0, #4ECDC4);
+  color: white;
+}
+
+.nav-btn {
+  border: none;
+  padding: 12px 20px;
+  border-radius: 25px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.nav-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+}
+
 
 .tips-section {
   background: white;
@@ -1370,6 +1618,144 @@ export default {
   opacity: 0.9;
   font-size: 0.9em;
 }
+.completion-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+}
+
+.success-bubble {
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88, #FF99AC);
+  color: white;
+  padding: 40px;
+  border-radius: 30px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.success-emoji {
+  font-size: 3em;
+  margin-bottom: 15px;
+}
+
+.final-score {
+  font-size: 1.2em;
+  margin-top: 10px;
+}
+
+.completion-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.play-again-btn,
+.back-btn,
+.results-btn {
+  border: none;
+  padding: 12px 20px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.play-again-btn {
+  background: white;
+  color: #333;
+}
+
+.results-btn {
+  background: #4ECDC4;
+  color: white;
+}
+
+.result-card {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  color: white;
+  padding: 40px;
+  border-radius: 25px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(151, 232, 226, 0.3);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.trophy {
+  font-size: 3em;
+  margin-bottom: 15px;
+}
+
+.result-title {
+  font-size: 2em;
+  margin-bottom: 10px;
+}
+
+.result-score {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.result-subtitle {
+  font-size: 1.1em;
+  opacity: 0.9;
+  margin-bottom: 30px;
+}
+
+.result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.replay-btn,
+.results-btn,
+.dashboard-btn {
+  border: none;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 25px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* 🎮 Spela igen */
+.replay-btn {
+ background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.replay-btn:hover {
+  background: linear-gradient(135deg, #3EC8AC, #2EBF91);
+  transform: scale(1.03);
+}
+
+/* 📊 Se alla resultat */
+.results-btn {
+   background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.results-btn:hover {
+  background: linear-gradient(135deg, #7EE8D7, #A0F1C8);
+  transform: scale(1.03);
+}
+
+/* 🏠 Till dashboard */
+.dashboard-btn {
+  background: linear-gradient(135deg, #11998e, #38ef7d);
+  box-shadow: 0 4px 10px rgba(56, 239, 125, 0.3);
+}
+.dashboard-btn:hover {
+  background: linear-gradient(135deg, #0F8A7D, #2FD672);
+  transform: scale(1.03);
+}
+
+
 
 @keyframes slideUp {
   0% { transform: translateY(20px); opacity: 0; }

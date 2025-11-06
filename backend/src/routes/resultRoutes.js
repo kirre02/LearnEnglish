@@ -4,9 +4,9 @@ import { saveResult, getUserResults } from '../controllers/resultController.js';
 const router = express.Router();
 
 // Spara nytt quiz-resultat
-router.post('/results', saveResult);
+router.post('/', saveResult);
 
 // Hämta alla resultat för en användare
-router.get('/results/:userId', getUserResults);
+router.get('/:userId', getUserResults);
 
 export default router;

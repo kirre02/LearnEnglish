@@ -3,6 +3,7 @@ import cors from "cors";
 import userRoutes from "./routes/userRoutes.js";
 import wordRoutes from "./routes/wordRoutes.js";
 import resultRoutes from "./routes/resultRoutes.js"; // Från gren 4
+import quizRoutes from "./routes/quizRoutes.js"; // Från Seyda
 import db from "./database/db.js"; // ✅ LADES TILL
 
 const app = express();
@@ -20,7 +21,8 @@ app.get("/hello", (req, res) => {
 
 app.use("/api/users", userRoutes);
 app.use("/api/words", wordRoutes); // Från gren 5
-app.use("/api", resultRoutes); // Från gren 4
+app.use("/api/results", resultRoutes); // Från gren 4
+app.use("/api/quiz", quizRoutes); // Från Seyda
 
 // ✅ LADES TILL - User Progress Route
 app.get("/api/user-progress", async (req, res) => {

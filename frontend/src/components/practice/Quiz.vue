@@ -1,7 +1,9 @@
 <template>
   <div class="quiz-page-container" @keydown="handleKeydown" tabindex="0">
     <div class="quiz-container">
-      <div class="quiz-header">
+
+      <!-- 🔙 Header -->
+      <div class="quiz-header" v-if="!isResultsMode">
         <button @click="goBack" class="back-btn">← Tillbaka</button>
         <div class="quiz-progress">
           <span class="progress-text">Fråga {{ currentQuestionIndex + 1 }} av {{ questions.length }}</span>
@@ -14,88 +16,137 @@
         </button>
       </div>
 
-      <div v-if="!quizFinished" class="quiz-content">
-        <div class="question-bubble">
-          <div class="question-header">
-            <div class="question-emoji">🧠</div>
-          </div>
-          <h2>{{ currentQuestion.question }}</h2>
-          <div class="question-hint" v-if="currentQuestion.hint">
-            💡 {{ currentQuestion.hint }}
+      <!-- 🧠 QUIZ MODE (isResultsMode = false) -->
+      <div v-if="!isResultsMode">
+
+        <!-- ⏳ Loading -->
+        <div v-if="loading" class="loading-container">
+          <div class="loading-bubble">
+            <div class="loading-emoji">⏳</div>
+            <h3>Hämtar frågor...</h3>
+            <p>Var god vänta medan vi förbereder ditt quiz!</p>
           </div>
         </div>
 
-        <div class="options-container">
-          <button
-            v-for="(option, index) in currentQuestion.options"
-            :key="index"
-            @click="checkAnswer(option)"
-            :class="['option-btn', getOptionClass(option), { 'focused': focusedOptionIndex === index }]"
-            :disabled="answered"
-            ref="optionButtons"
-          >
-            <span class="option-emoji">{{ getOptionEmoji(index) }}</span>
-            <span class="option-text">{{ option }}</span>
+        <!-- ❓ Quiz Questions -->
+        <div v-else-if="!quizFinished && currentQuestion" class="quiz-content">
+          <div class="question-bubble">
+            <div class="question-header">
+              <div class="question-emoji">🧠</div>
+            </div>
+            <h2>Vad är "{{ getSwedishWord() }}" på engelska?</h2>
+            <div class="question-hint" v-if="currentQuestion.hint">
+              💡 {{ currentQuestion.hint }}
+            </div>
+          </div>
+
+          <div class="options-container">
             <button
-              v-if="shouldShowOptionAudio(option)"
-              @click.stop="playOptionAudio(option)"
-              class="option-audio-btn"
-              :disabled="audioLoading"
-              :aria-label="`Hör uttal av ${option}`"
+              v-for="(option, index) in currentQuestion.options"
+              :key="index"
+              @click="checkAnswer(option)"
+              :class="['option-btn', getOptionClass(option), { 'focused': focusedOptionIndex === index }]"
+              :disabled="answered"
+              ref="optionButtons"
             >
-              <span v-if="currentLoadingOption === option">⏳</span>
-              <span v-else>🔊</span>
+              <span class="option-emoji">{{ getOptionEmoji(index) }}</span>
+              <span class="option-text">{{ option }}</span>
+
+              <button
+                v-if="shouldShowOptionAudio(option)"
+                @click.stop="playOptionAudio(option)"
+                class="option-audio-btn"
+                :disabled="audioLoading"
+                :aria-label="`Hör uttal av ${option}`"
+              >
+                <span v-if="currentLoadingOption === option">⏳</span>
+                <span v-else>🔊</span>
+              </button>
             </button>
-          </button>
+          </div>
+
+          <!-- ✅ Feedback -->
+          <div v-if="answered" class="feedback-bubble" :class="feedbackClass" ref="feedbackSection">
+            <div class="feedback-emoji">{{ feedbackEmoji }}</div>
+            <div class="feedback-text">{{ feedbackText }}</div>
+            <div class="feedback-actions" ref="feedbackActions">
+              <button
+                v-if="!isAnswerCorrect"
+                @click="playCorrectAnswerAudio"
+                class="audio-hint-btn"
+                :disabled="audioLoading"
+                :class="{ 'focused': focusedAction === 'audio', 'pulse': shouldPulseAudioButton }"
+                ref="audioButton"
+              >
+                <span v-if="audioLoading && currentLoadingOption === 'correct-answer'">⏳ Laddar...</span>
+                <span v-else>🔊 Hör rätt svar</span>
+              </button>
+              <button
+                @click="nextQuestion"
+                class="next-btn"
+                :class="{ 'pulse': shouldPulseNextButton, 'focused': focusedAction === 'next' }"
+                ref="nextButton"
+              >
+                {{ isLastQuestion ? 'Se resultat' : 'Nästa fråga' }} →
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div v-if="answered" class="feedback-bubble" :class="feedbackClass" ref="feedbackSection">
-          <div class="feedback-emoji">{{ feedbackEmoji }}</div>
-          <div class="feedback-text">{{ feedbackText }}</div>
-          <div class="feedback-actions" ref="feedbackActions">
-            <button
-              v-if="!isAnswerCorrect"
-              @click="playCorrectAnswerAudio"
-              class="audio-hint-btn"
-              :disabled="audioLoading"
-              :class="{ 'focused': focusedAction === 'audio', 'pulse': shouldPulseAudioButton }"
-              ref="audioButton"
-            >
-              <span v-if="audioLoading && currentLoadingOption === 'correct-answer'">⏳ Laddar...</span>
-              <span v-else>🔊 Hör rätt svar</span>
-            </button>
-            <button
-              @click="nextQuestion"
-              class="next-btn"
-              :class="{ 'pulse': shouldPulseNextButton, 'focused': focusedAction === 'next' }"
-              ref="nextButton"
-            >
-              {{ isLastQuestion ? 'Se resultat' : 'Nästa fråga' }} →
-            </button>
+        <!-- 🎉 Quiz Finished -->
+        <div v-else class="results-container">
+          <div class="results-bubble" :class="resultsClass">
+            <div class="results-emoji">{{ resultsEmoji }}</div>
+            <h2>{{ resultsTitle }}</h2>
+            <p class="results-score">{{ score }} av {{ questions.length }} rätt!</p>
+            <p class="results-message">{{ resultsMessage }}</p>
+
+            <div class="results-actions">
+              <button @click="restartQuiz" class="action-btn play-again-btn">
+                🎮 Spela igen
+              </button>
+              <button @click="goToAllResults" class="action-btn results-btn">
+                📊 Se alla resultat
+              </button>
+              <button @click="goToDashboard" class="action-btn dashboard-btn">
+                🏠 Till dashboard
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div v-else class="results-container">
-        <div class="results-bubble" :class="resultsClass">
-          <div class="results-emoji">{{ resultsEmoji }}</div>
-          <h2>{{ resultsTitle }}</h2>
-          <p class="results-score">{{ score }} av {{ questions.length }} rätt!</p>
-          <p class="results-message">{{ resultsMessage }}</p>
+      <!-- 📊 RESULTS MODE (isResultsMode = true) -->
+      <div v-else class="results-page">
+        <h2 class="results-title">📘 Dina quizresultat</h2>
+        <h3 style="color:#555; margin-bottom:20px;">
+          Här ser du alla dina tidigare quizresultat 📊
+        </h3>
 
-          <div class="results-actions">
-            <button @click="restartQuiz" class="action-btn play-again-btn">
-              🎮 Spela igen
-            </button>
-            <button @click="goToAllResults" class="action-btn results-btn">
-              📊 Se alla resultat
-            </button>
-            <button @click="goToDashboard" class="action-btn dashboard-btn">
-              🏠 Till dashboard
-            </button>
-          </div>
-        </div>
+        <table v-if="results.length" class="results-table">
+          <thead>
+            <tr>
+              <th>Datum</th>
+              <th>Poäng</th>
+              <th>Totalt</th>
+              <th>Procent</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(r, index) in results" :key="index">
+              <td>{{ new Date(r.created_at).toLocaleDateString('sv-SE') }}</td>
+              <td>{{ r.correct_answers }}</td>
+              <td>{{ r.correct_answers + r.wrong_answers }}</td>
+              <td>{{ Math.round((r.correct_answers / (r.correct_answers + r.wrong_answers)) * 100) }}%</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p v-else class="no-results">Inga quizresultat ännu. Gör ett quiz först 📘</p>
+
+        <button @click="goBack" class="action-btn">⬅️ Tillbaka</button>
       </div>
+
     </div>
   </div>
 </template>
@@ -128,132 +179,7 @@ export default {
         hint: "En röd eller grön frukt",
         audioText: "Apple"
       },
-      {
-        question: "Vad betyder 'Tack' på engelska?",
-        options: ["Sorry", "Thank you", "You're welcome", "Bye"],
-        correctAnswer: "Thank you",
-        hint: "Säger man när någon ger dig något",
-        audioText: "Thank you"
-      },
-      {
-        question: "Hur säger man 'Vatten' på engelska?",
-        options: ["Milk", "Juice", "Water", "Coffee"],
-        correctAnswer: "Water",
-        hint: "Vätska man dricker när man är törstig",
-        audioText: "Water"
-      },
-      {
-        question: "Vad betyder 'Hejdå' på engelska?",
-        options: ["Good morning", "Good night", "Goodbye", "Welcome"],
-        correctAnswer: "Goodbye",
-        hint: "Säger man när man lämnar",
-        audioText: "Goodbye"
-      },
-      {
-        question: "Vad är 'Bok' på engelska?",
-        options: ["Book", "Paper", "Pen", "Library"],
-        correctAnswer: "Book",
-        hint: "Något man läser",
-        audioText: "Book"
-      },
-      {
-        question: "Vad betyder 'Ja' på engelska?",
-        options: ["No", "Yes", "Maybe", "Please"],
-        correctAnswer: "Yes",
-        hint: "Motsatsen till nej",
-        audioText: "Yes"
-      },
-      {
-        question: "Hur säger man 'Hus' på engelska?",
-        options: ["Car", "House", "Garden", "Street"],
-        correctAnswer: "House",
-        hint: "Där man bor",
-        audioText: "House"
-      },
-      {
-        question: "Vad är 'Katt' på engelska?",
-        options: ["Dog", "Cat", "Bird", "Fish"],
-        correctAnswer: "Cat",
-        hint: "Ett husdjur som jamar",
-        audioText: "Cat"
-      },
-      {
-        question: "Vad betyder 'Nej' på engelska?",
-        options: ["Yes", "No", "Okay", "Sure"],
-        correctAnswer: "No",
-        hint: "Motsatsen till ja",
-        audioText: "No"
-      },
-      {
-        question: "Hur säger man 'Skola' på engelska?",
-        options: ["Work", "School", "Home", "Playground"],
-        correctAnswer: "School",
-        hint: "Där barn lär sig",
-        audioText: "School"
-      },
-      {
-        question: "Vad är 'Bil' på engelska?",
-        options: ["Bike", "Bus", "Car", "Train"],
-        correctAnswer: "Car",
-        hint: "Ett fordon med fyra hjul",
-        audioText: "Car"
-      },
-      {
-        question: "Vad betyder 'Förlåt' på engelska?",
-        options: ["Excuse me", "Sorry", "Thank you", "Please"],
-        correctAnswer: "Sorry",
-        hint: "Säger man när man gjort något fel",
-        audioText: "Sorry"
-      },
-      {
-        question: "Hur säger man 'Familj' på engelska?",
-        options: ["Friends", "Family", "Parents", "Children"],
-        correctAnswer: "Family",
-        hint: "Mamma, pappa, barn",
-        audioText: "Family"
-      },
-      {
-        question: "Vad är 'Mat' på engelska?",
-        options: ["Drink", "Food", "Water", "Bread"],
-        correctAnswer: "Food",
-        hint: "Något man äter",
-        audioText: "Food"
-      },
-      {
-        question: "Vad betyder 'Snälla' på engelska?",
-        options: ["Please", "Thank you", "Sorry", "Hello"],
-        correctAnswer: "Please",
-        hint: "Säger man när man ber om något",
-        audioText: "Please"
-      },
-      {
-        question: "Hur säger man 'Tid' på engelska?",
-        options: ["Clock", "Time", "Watch", "Hour"],
-        correctAnswer: "Time",
-        hint: "Vad klockan är",
-        audioText: "Time"
-      },
-      {
-        question: "Vad är 'Dag' på engelska?",
-        options: ["Night", "Day", "Week", "Month"],
-        correctAnswer: "Day",
-        hint: "24 timmar",
-        audioText: "Day"
-      },
-      {
-        question: "Vad betyder 'Stor' på engelska?",
-        options: ["Small", "Big", "Tall", "Short"],
-        correctAnswer: "Big",
-        hint: "Motsatsen till liten",
-        audioText: "Big"
-      },
-      {
-        question: "Vad betyder 'Lycklig' på engelska?",
-        options: ["Sad", "Happy", "Angry", "Tired"],
-        correctAnswer: "Happy",
-        hint: "När man känner sig glad",
-        audioText: "Happy"
-      }
+      // ... resten av dina frågor
     ];
 
     const preparedQuestions = initialQuestions.map(question => {
@@ -270,7 +196,9 @@ export default {
       selectedAnswer: null,
       quizFinished: false,
       progress: {},
-      questions: shuffleArray(preparedQuestions),
+      questions: [],
+      results: [],
+      loading: true,
       initialQuestions: initialQuestions,
       shuffleArray: shuffleArray,
 
@@ -297,6 +225,9 @@ export default {
     progressBarStyle() {
       const progress = ((this.currentQuestionIndex + 1) / this.questions.length) * 100;
       return { width: `${progress}%` };
+    },
+    isResultsMode() {
+      return this.$route.path.includes('/quiz/results') || this.$route.path.includes('/quiz-results');
     },
     feedbackClass() {
       return this.selectedAnswer === this.currentQuestion.correctAnswer ? 'correct' : 'incorrect';
@@ -343,31 +274,31 @@ export default {
       return this.pulseAudioButton;
     }
   },
-  mounted() {
+  async mounted() {
     this.$el.focus();
     
-    // NY: Kolla om vi ska fortsätta sparad quiz
-    if (this.$route.query.continue === 'true') {
-      this.loadSavedQuiz();
-    } else {
-      this.loadCurrentQuizState();
-    }
-
-    if (this.$route.query.showResults === 'true') {
-      const savedState = localStorage.getItem('lastQuizState');
-      if (savedState) {
-        try {
-          const quizState = JSON.parse(savedState);
-          this.quizFinished = true;
-          this.score = quizState.score;
-          localStorage.removeItem('lastQuizState');
-        } catch (e) {
-          console.error("Kunde inte tolka sparad quiz-state:", e);
+    try {
+      if (this.isResultsMode) {
+        console.log("📊 Laddar quizresultat...");
+        await this.loadPastResults();
+      } else {
+        console.log("🧠 Laddar quizfrågor...");
+        
+        // NY: Kolla om vi ska fortsätta sparad quiz
+        if (this.$route.query.continue === 'true') {
+          this.loadSavedQuiz();
+        } else {
+          await this.loadQuestionsFromDatabase();
+          this.loadCurrentQuizState();
         }
       }
-      this.$router.replace({ query: {} });
+    } catch (err) {
+      console.error("Init error:", err);
+    } finally {
+      this.loading = false;
     }
-
+    
+    // Token check från main
     if (!localStorage.getItem('token')) {
       this.$router.push('/');
     }
@@ -377,7 +308,100 @@ export default {
       console.log('Web Speech API är inte tillgängligt i denna webbläsare');
     }
   },
+  
   methods: {
+    // NY METOD: Hämta det svenska ordet (prompten)
+    getSwedishWord() {
+      if (!this.currentQuestion) return '';
+      return this.currentQuestion.swedish || this.currentQuestion.question || '[Ord saknas]';
+    },
+
+    async loadPastResults() {
+      this.loading = true;
+      try {
+        const userId = 1;
+        const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
+        if (!response.ok) throw new Error('Kunde inte hämta quizresultat');
+
+        const data = await response.json();
+        this.results = data
+          .filter(r => !r.quiz_type || r.quiz_type.toLowerCase() === 'quiz')
+          .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        console.log("✅ Quiz results loaded:", this.results.length);
+      } catch (err) {
+        console.error("❌ Fel vid hämtning av quizresultat:", err);
+        this.results = [];
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async loadQuestionsFromDatabase() {
+      this.loading = true;
+      try {
+        const response = await fetch('http://localhost:9001/api/words');
+        if (!response.ok) throw new Error('Kunde inte hämta ord från databasen');
+        
+        const allWords = await response.json();
+        
+        if (allWords.length === 0) {
+          throw new Error('Inga ord hittades i databasen');
+        }
+
+        const randomWords = this.shuffleArray([...allWords]).slice(0, 20);
+        
+        // Hämta alla engelska ord för felaktiga alternativ
+        const allEnglishWords = allWords.map(w => w.english);
+
+        this.questions = randomWords.map(word => {
+          
+          // Hämta 3 slumpmässiga engelska ord som inte är det rätta svaret
+          const wrongEnglishOptions = this.shuffleArray(
+            allEnglishWords.filter(engWord => engWord !== word.english)
+          ).slice(0, 3);
+
+          // Skapa alternativ (rätt svar i engelska + 3 felaktiga i engelska)
+          const options = this.shuffleArray([
+            word.english, // Rätt svar är nu engelska
+            ...wrongEnglishOptions
+          ]);
+
+          return {
+            swedish: word.swedish, // Svenska ordet är frågan (prompt)
+            correctAnswer: word.english, // Engelska ordet är rätt svar
+            options: options, // Alternativen är engelska
+            hint: `Öva på ordet "${word.swedish}"`,
+            audioText: word.english // Ljudet spelas upp i engelska
+          };
+        });
+
+        console.log('Laddade frågor från databasen:', this.questions.length);
+
+      } catch (error) {
+        console.error('Error loading questions from database:', error);
+        this.useFallbackQuestions();
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    useFallbackQuestions() {
+      const fallbackQuestions = [
+        {
+          swedish: "Hej",
+          options: ["Hello", "Goodbye", "Thank you", "Excuse me"],
+          correctAnswer: "Hello",
+          hint: "Det är det första man säger när man träffar någon",
+          audioText: "Hello"
+        },
+        // ... resten av fallback-frågor
+      ];
+      
+      this.questions = this.shuffleArray(fallbackQuestions).slice(0, 20);
+      console.log('Använder fallback-frågor');
+    },
+
     // NY: Bekräfta avbrott av quiz
     confirmCancelQuiz() {
       if (confirm('Vill du avbryta quizet? Ditt framsteg kommer att sparas så du kan fortsätta senare.')) {
@@ -428,17 +452,20 @@ export default {
         this.loadCurrentQuizState(); // Fallback
       }
     },
-    
+
+    // Quiz metoder
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
     },
+    
     getOptionClass(option) {
       if (!this.answered) return '';
       if (option === this.currentQuestion.correctAnswer) return 'correct';
       if (option === this.selectedAnswer) return 'incorrect';
       return '';
     },
+    
     checkAnswer(selectedAnswer) {
       if (this.answered) return;
 
@@ -479,6 +506,7 @@ export default {
         }
       });
     },
+
     handleKeydown(event) {
       if (this.quizFinished) return;
 
@@ -523,6 +551,7 @@ export default {
         }
       }
     },
+
     scrollToFocusedOption() {
       this.$nextTick(() => {
         if (this.$refs.optionButtons && this.$refs.optionButtons[this.focusedOptionIndex]) {
@@ -533,6 +562,7 @@ export default {
         }
       });
     },
+
     focusCurrentAction() {
       this.$nextTick(() => {
         if (this.focusedAction === 'next' && this.$refs.nextButton) {
@@ -542,6 +572,7 @@ export default {
         }
       });
     },
+
     saveCurrentQuizState() {
       const quizState = {
         score: this.score,
@@ -553,6 +584,7 @@ export default {
       };
       localStorage.setItem('currentQuizState', JSON.stringify(quizState));
     },
+
     loadCurrentQuizState() {
       const savedState = localStorage.getItem('currentQuizState');
       if (savedState) {
@@ -569,6 +601,7 @@ export default {
         }
       }
     },
+
     goBack() {
       if (this.currentQuestionIndex > 0) {
         this.currentQuestionIndex--;
@@ -580,6 +613,7 @@ export default {
         this.$router.push('/dashboard');
       }
     },
+    
     nextQuestion() {
       if (this.isLastQuestion) {
         this.finishQuiz();
@@ -598,6 +632,7 @@ export default {
         });
       }
     },
+    
     finishQuiz() {
       this.quizFinished = true;
       this.updateProgress();
@@ -606,6 +641,7 @@ export default {
       localStorage.removeItem('currentQuizState');
       localStorage.removeItem('savedQuizState'); // Rensa sparad state vid avslut
     },
+    
     saveQuizStateForResults() {
       const quizState = {
         score: this.score,
@@ -613,37 +649,42 @@ export default {
       };
       localStorage.setItem('lastQuizState', JSON.stringify(quizState));
     },
+
     async saveQuizResult() {
       try {
+        const user = JSON.parse(localStorage.getItem('user'));
         const resultData = {
-          userId: 1,
-          score: this.score,
-          total: this.questions.length
+          userId: user?.id || 1,
+          correctAnswers: this.score,
+          wrongAnswers: this.questions.length - this.score,
+          quiz_type: "quiz"
         };
 
-        const response = await fetch('http://localhost:9001/api/results', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(resultData)
+        console.log("💾 Skickar quizresultat:", resultData);
+
+        const response = await fetch("http://localhost:9001/api/quiz/quiz-results", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(resultData),
         });
 
         if (response.ok) {
-          console.log('Quiz result saved successfully!');
+          console.log("✅ Quizresultat sparat!");
         } else {
-          console.error('Failed to save quiz result');
+          console.error("❌ Misslyckades att spara quizresultat:", response.status);
         }
       } catch (error) {
-        console.error('Error saving quiz result:', error);
+        console.error("💥 Fel vid sparande av quizresultat:", error);
       }
     },
+
     updateProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
       progress.completedQuizzes = (progress.completedQuizzes || 0) + 1;
       progress.learnedWords = Math.min(125, (progress.learnedWords || 0) + this.score * 2);
       localStorage.setItem('learningProgress', JSON.stringify(progress));
     },
+    
     loadProgress() {
       try {
         const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
@@ -653,6 +694,7 @@ export default {
         this.progress = {};
       }
     },
+    
     restartQuiz() {
       const preparedQuestions = this.initialQuestions.map(question => {
         return {
@@ -678,17 +720,22 @@ export default {
         this.$el.focus();
       });
     },
+    
     goToDashboard() {
       this.$router.push('/dashboard');
     },
+
     goToAllResults() {
-      this.$router.push({ path: '/results', query: { showResults: 'true' } });
+      this.$router.push('/practice/quiz/results');
     },
+
+    // Ljudmetoder
     async playOptionAudio(option) {
       this.currentLoadingOption = option;
       await this.playAudio(option);
       this.currentLoadingOption = null;
     },
+
     async playCorrectAnswerAudio() {
       this.currentLoadingOption = 'correct-answer';
       await this.playAudio(this.currentQuestion.correctAnswer);
@@ -701,6 +748,7 @@ export default {
         }
       });
     },
+
     async playAudio(text) {
       if (!this.isSpeechSupported) {
         console.warn('Web Speech API stöds inte i denna webbläsare');
@@ -741,16 +789,29 @@ export default {
         this.showAudioError();
       }
     },
+
     showBrowserSupportMessage() {
       alert('Ljudstöd är för närvarande inte tillgängligt i din webbläsare. Vi rekommenderar Chrome eller Edge för bästa upplevelse.');
     },
+
     showAudioError() {
       console.warn('Kunde inte spela upp ljudet. Kontrollera din ljudinställningar.');
     },
+
     shouldShowOptionAudio() {
       return this.isSpeechSupported;
     }
   },
+  
+  watch: {
+    '$route'(to) {
+      if (to.path.includes('/quiz/results')) {
+        console.log("📡 Route changed → reload quiz results");
+        this.loadPastResults();
+      }
+    }
+  },
+
   beforeUnmount() {
     if (this.isSpeechSupported) {
       speechSynthesis.cancel();
@@ -793,7 +854,6 @@ export default {
   gap: 15px;
 }
 /* SLUT NY CSS */
-
 
 /* BEFINTLIG CSS */
 .quiz-page-container {
@@ -1048,84 +1108,177 @@ export default {
   animation: pulse 1s infinite;
 }
 
-.results-bubble {
-  padding: 40px;
-  border-radius: 25px;
-  text-align: center;
-  color: white;
-  animation: bounceIn 0.8s ease-out;
+/* === RESULT SECTION === */
+.results-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  margin-top: 20px;
 }
 
+.results-bubble {
+  color: white;
+  padding: 50px 40px;
+  border-radius: 30px;
+  text-align: center;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  max-width: 500px;
+  width: 90%;
+  animation: fadeInUp 0.7s ease-out;
+}
+
+/* 🔥 Arka plan tonlarını açtık, pastel ve sıcak */
 .results-bubble.excellent {
-  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  background: linear-gradient(135deg, #6FE7DD, #349D9E);
 }
 
 .results-bubble.good {
-  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+  background: linear-gradient(135deg, #FFB88C, #FF6B6B);
 }
 
 .results-bubble.ok {
-  background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+  background: linear-gradient(135deg, #FFD1B3, #FF9A8B);
 }
 
 .results-emoji {
-  font-size: 4em;
-  margin-bottom: 20px;
+  font-size: 3.5em;
+  margin-bottom: 15px;
 }
 
 .results-bubble h2 {
-  margin: 0 0 15px 0;
   font-size: 2em;
+  margin-bottom: 10px;
+  font-weight: bold;
 }
 
 .results-score {
-  font-size: 1.5em;
-  margin: 0 0 15px 0;
   font-weight: bold;
+  font-size: 1.3em;
+  margin-bottom: 10px;
 }
 
 .results-message {
   font-size: 1.1em;
-  margin: 0 0 30px 0;
-  opacity: 0.9;
+  opacity: 0.95;
+  margin-bottom: 30px;
 }
 
+/* === Buttons (uyumlu mercan + mint gradyanlar) === */
 .results-actions {
   display: flex;
-  gap: 15px;
   justify-content: center;
+  gap: 15px;
   flex-wrap: wrap;
 }
 
 .action-btn {
   border: none;
-  padding: 15px 25px;
+  padding: 12px 25px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+  color: white;
+  transition: all 0.3s ease;
+  font-size: 1em;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* 🎮 Spela igen → canlı mint (enerjik ton) */
+.play-again-btn {
+  background: linear-gradient(135deg, #A8E6CF, #4ECDC4);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 10px rgba(78, 205, 196, 0.4);
+}
+
+/* 📊 Se alla resultat → yumuşak nane (daha açık, fresh ton) */
+.results-btn {
+  background: linear-gradient(135deg, #B9F3E4, #7BE5C9);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 10px rgba(123, 229, 201, 0.4);
+}
+
+/* 🏠 Till dashboard → deniz yeşili (biraz daha koyu mint ton) */
+.dashboard-btn {
+  background: linear-gradient(135deg, #8FDAC5, #44A08D);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 10px rgba(68, 160, 141, 0.4);
+}
+
+/* ✨ Hover (hepsi için ortak mint parlaması) */
+.action-btn:hover {
+  transform: scale(1.08);
+  background: linear-gradient(135deg, #A0E7CA, #44A08D);
+  box-shadow: 0 6px 15px rgba(78, 205, 196, 0.5);
+  opacity: 0.95;
+}
+
+.results-page {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.results-title {
+  font-size: 1.8em;
+  margin-bottom: 25px;
+}
+
+.results-table {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto 30px;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.results-table th, .results-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.results-table th {
+  background: #FF9A8B;
+  color: white;
+}
+
+.results-table tr:last-child td {
+  border-bottom: none;
+}
+
+.no-results {
+  color: #666;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+
+.results-back-btn {
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+  color: white;
+  border: none;
+  padding: 12px 25px;
   border-radius: 20px;
   cursor: pointer;
   font-weight: bold;
   font-size: 1em;
   transition: all 0.3s ease;
-  color: white;
+  box-shadow: 0 4px 10px rgba(255, 154, 139, 0.4);
+  margin-top: 25px;
 }
 
-.play-again-btn {
-  background: rgba(255,255,255,0.2);
-  backdrop-filter: blur(10px);
+.results-back-btn:hover {
+  transform: translateY(-3px);
+  background: linear-gradient(135deg, #FF6A88, #FF9A8B);
+  box-shadow: 0 6px 15px rgba(255, 154, 139, 0.6);
 }
 
-.results-btn {
-  background: rgba(102, 126, 234, 0.8);
-  backdrop-filter: blur(10px);
-}
-
-.dashboard-btn {
-  background: rgba(0,0,0,0.2);
-  backdrop-filter: blur(10px);
-}
-
-.action-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+.options-container.scroll-top {
+  box-shadow: inset 0 10px 20px -10px rgba(255, 107, 107, 0.5);
 }
 
 @keyframes pulse {
@@ -1144,6 +1297,11 @@ export default {
   50% { transform: scale(1.05); }
   70% { transform: scale(0.9); }
   100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  0% { transform: translateY(30px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
 }
 
 @media (max-width: 768px) {

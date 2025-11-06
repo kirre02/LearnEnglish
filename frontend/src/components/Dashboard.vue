@@ -23,7 +23,7 @@
               <span class="label">ord lärt!</span>
             </div>
             <button @click="handleLogout" class="logout-btn">
-              <span class="logout-text">Logga ut</span>
+              <span class="logout-text">Logga Ut</span>
               <span class="logout-emoji">👋</span>
             </button>
           </div>
@@ -31,7 +31,8 @@
       </div>
     </div>
 
-    <div class="progress-bubbles">
+    <!-- Framstegs-bubblor -->
+    <div class="progress-bubbles three-columns">
       <div class="progress-bubble progress-main">
         <div class="bubble-emoji">🚀</div>
         <div class="bubble-content">
@@ -50,6 +51,10 @@
           <h3>Quiz-mästare!</h3>
           <p>{{ completedQuizzes }} quiz avklarade</p>
         </div>
+      </div>
+
+      <div class="progress-bubble chart-bubble">
+        <QuizResultatMini />
       </div>
     </div>
 
@@ -155,7 +160,10 @@
 </template>
 
 <script>
+import QuizResultatMini from "@/components/QuizResults.vue"; 
+
 export default {
+  components: { QuizResultatMini },
   name: 'Dashboard',
   data() {
     return {
@@ -165,6 +173,8 @@ export default {
       completedQuizzes: 0,
       hasSavedQuiz: false,
       showQuizModal: false,
+      quizResults: [],
+      chartData: null,
       categories: [
         { id: 1, name: 'Färger', emoji: '🎨', description: 'Upptäck alla färger' },
         { id: 2, name: 'Djur', emoji: '🐶', description: 'Djur från hela världen' },
@@ -172,7 +182,7 @@ export default {
         { id: 4, name: 'Mat', emoji: '🍎', description: 'Gott och nyttigt' },
         { id: 5, name: 'Familj', emoji: '👨‍👩‍👧‍👦', description: 'Mamma, pappa & alla andra' },
         { id: 6, name: 'Vardagsord', emoji: '💬', description: 'Ord för vardagen' }
-      ]
+      ],
     }
   },
   computed: {
@@ -186,9 +196,44 @@ export default {
     }
   },
   async mounted() {
+    // Token-kontroll från din version
     if (!localStorage.getItem('token')) {
       this.$router.push('/');
     }
+    
+    // Seydas quiz results kod
+    try {
+      const userId = 1;
+      const res = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
+      const data = await res.json();
+
+      if (data.length > 0) {
+        data.shift();
+      }
+
+      this.quizResults = data.map(r => ({
+        date: new Date(r.created_at).toLocaleDateString("sv-SE"),
+        correct: r.correct_answers,
+        total: r.correct_answers + r.wrong_answers,
+        percent: Math.round((r.correct_answers / (r.correct_answers + r.wrong_answers)) * 100)
+      }));
+
+      this.chartData = {
+        labels: this.quizResults.map(r => r.date),
+        datasets: [
+          {
+            label: "Quizresultat (%)",
+            data: this.quizResults.map(r => r.percent),
+            backgroundColor: ["#FF9A8B", "#4ECDC4", "#C77DFF", "#FFD93D", "#FF6B6B"]
+          }
+        ]
+      };
+
+    } catch (err) {
+      console.error("❌ Fel vid hämtning av quizresultat:", err);
+    }
+
+    // Din progress loading funktioner
     await this.loadUserProgress();
     this.checkForSavedQuiz();
   },
@@ -282,14 +327,16 @@ export default {
 
     startQuiz() {
       this.$router.push('/practice/quiz');
+    },
+
+    goToResults() {
+      this.$router.push('/quiz-results');
     }
   }
 }
 </script>
 
 <style scoped>
-/* Alla ursprungliga CSS-stilar förblir oförändrade */
-
 .dashboard {
   max-width: 1200px;
   margin: 0 auto;
@@ -598,11 +645,16 @@ export default {
 }
 
 /* Framstegs-bubblor */
-.progress-bubbles {
+.progress-bubbles.three-columns {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 20px;
   margin-bottom: 40px;
+}
+
+.chart-bubble {
+  border: 3px solid #6a11cb;
+  padding: 10px;
 }
 
 .progress-bubble {
@@ -830,6 +882,28 @@ export default {
   font-size: 1.5em;
 }
 
+.results-btn {
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  color: white;
+  border: none;
+  padding: 20px 15px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: bold;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+}
+
+.results-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+}
+
 /* Uppmuntrande footer */
 .encouragement-footer {
   text-align: center;
@@ -936,6 +1010,10 @@ export default {
   
   .option-emoji {
     font-size: 2em;
+  }
+
+  .results-btn {
+    background: linear-gradient(135deg, #ff6a88, #ff99ac); 
   }
 }
 </style>
