@@ -1,5 +1,6 @@
 <template>
-  <div class="quiz-page-container">    <div class="quiz-container">
+  <div class="quiz-page-container">
+    <div class="quiz-container">
       <div class="quiz-header">
         <button @click="goBack" class="back-btn">← Tillbaka</button>
         <div class="quiz-progress">
@@ -7,9 +8,10 @@
           <div class="progress-bar">
             <div class="progress-fill" :style="progressBarStyle"></div>
           </div>
-        </div>      </div>
+        </div>
+      </div>
 
-    <div v-if="!quizFinished" class="quiz-content">
+      <div v-if="!quizFinished" class="quiz-content">
         <div class="question-bubble">
           <div class="question-header">
             <div class="question-emoji">🧠</div>
@@ -17,7 +19,8 @@
           <h2>{{ currentQuestion.question }}</h2>
           <div class="question-hint" v-if="currentQuestion.hint">
             💡 {{ currentQuestion.hint }}
-          </div>        </div>
+          </div>
+        </div>
 
         <div class="options-container">
           <button
@@ -39,8 +42,9 @@
               <span v-if="currentLoadingOption === option">⏳</span>
               <span v-else>🔊</span>
             </button>
-          </button>        </div>
-      <div v-if="answered" class="feedback-bubble" :class="feedbackClass">
+          </button>
+        </div>
+        <div v-if="answered" class="feedback-bubble" :class="feedbackClass">
           <div class="feedback-emoji">{{ feedbackEmoji }}</div>
           <div class="feedback-text">{{ feedbackText }}</div>
           <button
@@ -228,7 +232,8 @@ export default {
         options: ["Small", "Big", "Tall", "Short"],
         correctAnswer: "Big",
         hint: "Motsatsen till liten",
-        audioText: "Big"      },
+        audioText: "Big"
+      },
       {
         question: "Vad betyder 'Lycklig' på engelska?",
         options: ["Sad", "Happy", "Angry", "Tired"],
@@ -250,7 +255,8 @@ export default {
       currentQuestionIndex: 0,
       answered: false,
       selectedAnswer: null,
-      quizFinished: false,      progress: {}, // För att lagra laddad progress
+      quizFinished: false,
+      progress: {}, // För att lagra laddad progress
       questions: shuffleArray(preparedQuestions),
       initialQuestions: initialQuestions,
       shuffleArray: shuffleArray,
@@ -259,7 +265,8 @@ export default {
       audioLoading: false,
       currentLoadingOption: null,
       currentAudio: null,
-      isSpeechSupported: 'speechSynthesis' in window    }
+      isSpeechSupported: 'speechSynthesis' in window
+    }
   },
   computed: {
     currentQuestion() {
@@ -309,16 +316,22 @@ export default {
     },
     isAnswerCorrect() {
       return this.selectedAnswer === this.currentQuestion.correctAnswer;
-    },  },
+    },
+  },
+  
+  // ✅ UPPDATERAD MOUNTED
   mounted() {
+    // Ladda sparad quiz state
+    this.loadCurrentQuizState();
+
     // Kolla om vi ska visa resultat direkt (när man kommer tillbaka från results-sidan)
-  if (this.$route.query.showResults === 'true') {
+    if (this.$route.query.showResults === 'true') {
       const savedState = localStorage.getItem('lastQuizState');
       if (savedState) {
         try {
           const quizState = JSON.parse(savedState);
           this.quizFinished = true;
-        this.score = quizState.score;
+          this.score = quizState.score;
           localStorage.removeItem('lastQuizState');
         } catch (e) {
           console.error("Kunde inte tolka sparad quiz-state:", e);
@@ -332,35 +345,98 @@ export default {
       this.$router.push('/');
     }
     this.loadProgress();
-    
+
     // Logga om ljudstöd saknas
     if (!this.isSpeechSupported) {
       console.log('Web Speech API är inte tillgängligt i denna webbläsare');
     }
 
-    this.fetchQuizQuestions();
+    this.fetchQuizQuestions();  },
 
-  },
+  // ✅ UPPDATERAD METHODS
   methods: {
-    
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
     },
+    
     getOptionClass(option) {
       if (!this.answered) return '';
       if (option === this.currentQuestion.correctAnswer) return 'correct';
       if (option === this.selectedAnswer) return 'incorrect';
       return '';
     },
+
+    // FIX 1: FÖRBÄTTRAD checkAnswer METOD
     checkAnswer(selectedAnswer) {
+      // Förhindra dubbelklick
+      if (this.answered) return;
+      
       this.answered = true;
       this.selectedAnswer = selectedAnswer;
 
       if (selectedAnswer === this.currentQuestion.correctAnswer) {
         this.score++;
       }
+
+      // Spara nuvarande state
+      this.saveCurrentQuizState();
     },
+
+    // FIX 2: Spara quiz state mellan frågor
+    saveCurrentQuizState() {
+      const quizState = {
+        score: this.score,
+        currentQuestionIndex: this.currentQuestionIndex,
+        answered: this.answered,
+        selectedAnswer: this.selectedAnswer,
+        questions: this.questions,
+        quizFinished: this.quizFinished
+      };
+      localStorage.setItem('currentQuizState', JSON.stringify(quizState));
+    },
+
+    // FIX 3: Ladda quiz state vid mount
+    loadCurrentQuizState() {
+      const savedState = localStorage.getItem('currentQuizState');
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState);
+          // Ladda bara om quizet inte är avslutat
+          if (!state.quizFinished) { 
+            this.score = state.score || 0;
+            this.currentQuestionIndex = state.currentQuestionIndex || 0;
+            this.answered = state.answered || false;
+            this.selectedAnswer = state.selectedAnswer || null;
+            this.questions = state.questions || this.questions;
+            this.quizFinished = state.quizFinished || false;
+          } else {
+             // Om det sparade statet är 'finished', rensa det
+             localStorage.removeItem('currentQuizState');
+          }
+        } catch (e) {
+          console.error('Kunde inte ladda quiz state:', e);
+          localStorage.removeItem('currentQuizState');
+        }
+      }
+    },
+
+    // FIX 4: FÖRBÄTTRAD goBack METOD
+    goBack() {
+      if (this.currentQuestionIndex > 0) {
+        // Gå till föregående fråga
+        this.currentQuestionIndex--;
+        // Återställ state för föregående fråga (vi tillåter inte att svara om)
+        // Detta kan justeras om man vill kunna svara om
+        this.answered = true; 
+        this.selectedAnswer = null; // Eller ladda från ett sparat state om vi lagrar alla svar
+        this.saveCurrentQuizState();
+      } else {
+        // Gå tillbaka till dashboard om vi är på första frågan
+        this.$router.push('/dashboard');
+      }
+    },
+
     nextQuestion() {
       if (this.isLastQuestion) {
         this.finishQuiz();
@@ -368,14 +444,22 @@ export default {
         this.currentQuestionIndex++;
         this.answered = false;
         this.selectedAnswer = null;
+        this.saveCurrentQuizState(); // Spara state
       }
     },
+
     finishQuiz() {
       this.quizFinished = true;
       this.updateProgress();
       this.saveQuizResult();
-      this.saveQuizStateForResults(); // Spara state när quizet är avslutat
+      this.saveQuizStateForResults();
+      
+      // Rensa current quiz state när quiz är klart
+      localStorage.removeItem('currentQuizState');
     },
+
+    // --- Resten av dina metoder ---
+
     // NY METOD: Spara quiz-state för återanvändning (från gren 4)
     saveQuizStateForResults() {
       const quizState = {
@@ -438,16 +522,13 @@ export default {
       this.answered = false;
       this.selectedAnswer = null;
       this.quizFinished = false;
+      // Rensa även state vid omstart
+      localStorage.removeItem('currentQuizState');
     },
-    goBack() {
-      this.$router.back();
-    },
+    
     goToDashboard() {
       this.$router.push('/dashboard');
-    },
-
-
-    // Gå till resultat-sida (från gren 4)
+    },    // Gå till resultat-sida (från gren 4)
     goToAllResults() {
       // Lägg till query-parameter för att visa resultat vid återkomst
       this.$router.push({ path: '/results', query: { showResults: 'true' } });
@@ -518,20 +599,29 @@ export default {
     shouldShowOptionAudio() {
       return this.isSpeechSupported;
     },
+    
+    // Denna metod fanns i din originalkod men anropades inte. 
+    // Jag behåller den ifall du behöver den senare.
+    fetchQuizQuestions() {
+      console.log("Hämtar (eller i detta fall, förbereder) quiz-frågor.");
+      // I en verklig app skulle detta vara ett API-anrop.
+      // Nu förlitar vi oss på datan som redan finns i 'data()'.
+    }
   },
 
+  // ✅ UPPDATERAD beforeUnmount
   beforeUnmount() {
     if (this.isSpeechSupported) {
-      speechSynthesis.cancel();
-
+      speechSynthesis.cancel();    }
+    // Spara state även när komponenten unmountas
+    if (!this.quizFinished) {
+      this.saveCurrentQuizState();
     }
   }
-}
-
-</script>
+}</script>
 
 <style scoped>
-
+/* Din CSS är oförändrad... */
 .quiz-page-container {
   min-height: 100vh;
   background-color: #f7f3ed;
@@ -885,5 +975,4 @@ export default {
     width: 30px;
     height: 30px;
   }
-}
-</style>
+}</style>
