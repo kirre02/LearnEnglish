@@ -2,10 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LoginForm from './components/LoginForm.vue'
 import Dashboard from './components/Dashboard.vue'
 import WelcomePage from './components/WelcomePage.vue'
-import Quiz from './components/Quiz.vue'
-import QuizResults from './components/QuizResults.vue'  // Från gren 4
-import PracticeLayout from './components/practice/PracticeLayout.vue' // Från gren 5
-import Register from './pages/Register.vue'
 import ProfileView from "@/pages/ProfileView.vue"; // Från gren 5
 import Quiz from './components/practice/Quiz.vue'
 import QuizResults from './components/QuizResults.vue'
@@ -60,8 +56,7 @@ const routes = [
   {
     path: '/profile',
     name: 'profile',
-    component: ProfileView
-  }
+    component: ProfileView,
     props: true
   },
   {
