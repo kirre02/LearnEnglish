@@ -36,7 +36,7 @@
         <div class="bubble-emoji">🚀</div>
         <div class="bubble-content">
           <h3>Ditt äventyr börjar!</h3>
-          <p>{{ learnedWords }} av 125 ord upptäckta</p>
+<p>{{ learnedWords }} av {{ totalWords }} ord upptäckta</p>
           <div class="progress-ring">
             <div class="ring-fill" :style="progressStyle"></div>
             <span class="ring-text">{{ progressPercentage }}%</span>
@@ -119,6 +119,7 @@ export default {
     return {
       user: JSON.parse(localStorage.getItem('user') || '{}'),
       learnedWords: 0,
+      totalWords: 120, // Kommer från API
       completedQuizzes: 0,
       categories: [
         { id: 1, name: 'Färger', emoji: '🎨', description: 'Upptäck alla färger' },
@@ -132,8 +133,7 @@ export default {
   },
   computed: {
     progressPercentage() {
-      // 125 är det totala antalet ord i alla kategorier (ungefär 6*20)
-      return Math.round((this.learnedWords / 125) * 100);
+      return this.totalWords > 0 ? Math.round((this.learnedWords / this.totalWords) * 100) : 0;
     },
     progressStyle() {
       return {
@@ -141,33 +141,47 @@ export default {
       };
     }
   },
-  mounted() {
+  async mounted() {
     if (!localStorage.getItem('token')) {
       this.$router.push('/');
     }
-    this.loadProgress();
+    await this.loadUserProgress();
   },
   methods: {
-    // FIX: KOMBINERAD METODS-SEKTION
-    loadProgress() {
+    async loadUserProgress() {
+      try {
+        const response = await fetch('http://localhost:9001/api/user-progress');
+        
+        if (response.ok) {
+          const progress = await response.json();
+          this.learnedWords = progress.learnedWords;
+          this.totalWords = progress.totalWords;
+          this.completedQuizzes = progress.completedQuizzes;
+          console.log('Progress loaded from API:', progress);
+        } else {
+          console.log('API not available, using localStorage');
+          this.loadProgressFromLocalStorage();
+        }
+      } catch (error) {
+        console.log('Error loading from API:', error);
+        this.loadProgressFromLocalStorage();
+      }
+    },
+
+    loadProgressFromLocalStorage() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
       this.learnedWords = progress.learnedWords || 0;
       this.completedQuizzes = progress.completedQuizzes || 0;
     },
-    saveProgress() {
-      const progress = {
-        learnedWords: this.learnedWords,
-        completedQuizzes: this.completedQuizzes
-      };
-      localStorage.setItem('learningProgress', JSON.stringify(progress));
-    },
+
     handleLogout() {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('learningProgress');
       this.$router.push('/');
     },
+
     navigateToCategory(categoryName) {
-      // Använd Ali's routes istället för practice routes
       const routes = {
         'Färger': '/färger',
         'Djur': '/djur', 
@@ -183,14 +197,14 @@ export default {
         alert(`Öppnar ${categoryName} - kommer snart!`);
       }
     },
+
     startQuickPractice(type) {
       this.$router.push(`/practice/${type}`);
     },
+
     startQuiz() {
-      this.$router.push('/practice/quiz');  // Behåll denna från main
-    }
-    // Slut FIX methods
-  }
+      this.$router.push('/practice/quiz');
+    }  }
 }
 </script>
 
