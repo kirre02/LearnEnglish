@@ -1,13 +1,12 @@
 <template>
   <div class="dashboard">
-    <!-- Toppsektion med bubbeltegel och ballonger -->
     <div class="top-section">
       <div class="floating-balloons">
         <div class="balloon balloon1">🎈</div>
         <div class="balloon balloon2">🎈</div>
         <div class="balloon balloon3">🎈</div>
       </div>
-
+      
       <div class="welcome-container">
         <div class="welcome-bubble">
           <div class="bubble-tail"></div>
@@ -17,14 +16,12 @@
         </div>
 
         <UserInfoBubble
-          :learnedWords="learnedWords" 
+          :learnedWords="learnedWords"
           @logout="handleLogout"
           @show-profile="goToProfile" />
       </div>
-
     </div>
 
-    <!-- Framstegs-bubblor -->
     <div class="progress-bubbles">
       <div class="progress-bubble progress-main">
         <div class="bubble-emoji">🚀</div>
@@ -37,7 +34,7 @@
           </div>
         </div>
       </div>
-
+      
       <div class="progress-bubble quiz-bubble">
         <div class="bubble-emoji">🏆</div>
         <div class="bubble-content">
@@ -47,74 +44,6 @@
       </div>
     </div>
 
-    <!-- Huvudsektion - Vad vill du utforska idag? -->
-    <div class="explore-section">
-      <div class="section-header">
-        <h2>Vad vill du utforska idag? 🗺️</h2>
-        <div class="header-decoration">🎨🌟🎯</div>
-      </div>
-
-      <div class="explore-cards">
-        <div class="explore-card card-1" @click="navigateToSection('basic-words')">
-          <div class="card-emoji">📚</div>
-          <div class="card-wave"></div>
-          <h3>Grundläggande</h3>
-          <p>Hej, tack, ja & nej</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <div class="explore-card card-2" @click="navigateToSection('colors')">
-          <div class="card-emoji">🎨</div>
-          <div class="card-wave"></div>
-          <h3>Färger</h3>
-          <p>Regnbågens alla färger</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <div class="explore-card card-3" @click="navigateToSection('animals')">
-          <div class="card-emoji">🐶</div>
-          <div class="card-wave"></div>
-          <h3>Djur</h3>
-          <p>Djur från hela världen</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <div class="explore-card card-4" @click="navigateToSection('numbers')">
-          <div class="card-emoji">🔢</div>
-          <div class="card-wave"></div>
-          <h3>Siffror</h3>
-          <p>1, 2, 3... låt oss räkna!</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <div class="explore-card card-5" @click="navigateToSection('food')">
-          <div class="card-emoji">🍎</div>
-          <div class="card-wave"></div>
-          <h3>Mat</h3>
-          <p>Gott och nyttigt</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <div class="explore-card card-6" @click="navigateToSection('family')">
-          <div class="card-emoji">👨‍👩‍👧‍👦</div>
-          <div class="card-wave"></div>
-          <h3>Familj</h3>
-          <p>Mamma, pappa & alla andra</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-
-        <!-- NYTT QUIZ-KORT -->
-        <div class="explore-card card-quiz" @click="startQuiz">
-          <div class="card-emoji">🧠</div>
-          <div class="card-wave"></div>
-          <h3>Quiz</h3>
-          <p>Testa dina kunskaper</p>
-          <div class="card-sparkle">✨</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Snabbknappar -->
     <div class="quick-actions">
       <div class="actions-header">
         <h3>Snabbstart ⚡</h3>
@@ -140,7 +69,27 @@
       </div>
     </div>
 
-    <!-- Uppmuntrande avslutning -->
+    <div class="explore-section">
+      <div class="section-header">
+        <h2>Vad vill du utforska idag? 🗺️</h2>
+        <div class="header-decoration">🎨🌟🎯</div>
+      </div>
+
+      <div class="explore-cards">
+        <div
+          v-for="(category, index) in categories"
+          :key="category.id"
+          :class="['explore-card', 'card-' + (index + 1)]"
+          @click="navigateToCategory(category.name)">
+          <div class="card-emoji">{{ category.emoji }}</div>
+          <div class="card-wave"></div>
+          <h3>{{ category.name }}</h3>
+          <p>{{ category.description }}</p>
+          <div class="card-sparkle">✨</div>
+        </div>
+        </div>
+    </div>
+
     <div class="encouragement-footer">
       <div class="encouragement-message">
         <div class="message-emoji">💫</div>
@@ -164,11 +113,20 @@ export default {
     return {
       user: JSON.parse(localStorage.getItem('user') || '{}'),
       learnedWords: 0,
-      completedQuizzes: 0
+      completedQuizzes: 0,
+      categories: [
+        { id: 1, name: 'Färger', emoji: '🎨', description: 'Upptäck alla färger' },
+        { id: 2, name: 'Djur', emoji: '🐶', description: 'Djur från hela världen' },
+        { id: 3, name: 'Siffror', emoji: '🔢', description: '1, 2, 3... låt oss räkna!' },
+        { id: 4, name: 'Mat', emoji: '🍎', description: 'Gott och nyttigt' },
+        { id: 5, name: 'Familj', emoji: '👨‍👩‍👧‍👦', description: 'Mamma, pappa & alla andra' },
+        { id: 6, name: 'Vardagsord', emoji: '💬', description: 'Ord för vardagen' }
+      ]
     }
   },
   computed: {
     progressPercentage() {
+      // 125 är det totala antalet ord i alla kategorier (ungefär 6*20)
       return Math.round((this.learnedWords / 125) * 100);
     },
     progressStyle() {
@@ -184,6 +142,49 @@ export default {
     this.loadProgress();
   },
   methods: {
+    // FIX: KOMBINERAD METODS-SEKTION
+    loadProgress() {
+      const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
+      this.learnedWords = progress.learnedWords || 0;
+      this.completedQuizzes = progress.completedQuizzes || 0;
+    },
+    saveProgress() {
+      const progress = {
+        learnedWords: this.learnedWords,
+        completedQuizzes: this.completedQuizzes
+      };
+      localStorage.setItem('learningProgress', JSON.stringify(progress));
+    },
+    handleLogout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      this.$router.push('/');
+    },
+    navigateToCategory(categoryName) {
+      // Använd Ali's routes istället för practice routes
+      const routes = {
+        'Färger': '/färger',
+        'Djur': '/djur',
+        'Siffror': '/siffror',
+        'Mat': '/mat',
+        'Familj': '/familj',
+        'Vardagsord': '/vardagsord'
+      };
+
+      if (routes[categoryName]) {
+        this.$router.push(routes[categoryName]);
+      } else {
+        alert(`Öppnar ${categoryName} - kommer snart!`);
+      }
+    },
+    startQuickPractice(type) {
+      this.$router.push(`/practice/${type}`);
+    },
+    startQuiz() {
+      this.$router.push('/practice/quiz');  // Behåll denna från main
+    }
+    // Slut FIX methods
+  }
     loadProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
       this.learnedWords = progress.learnedWords || 0;
@@ -217,6 +218,13 @@ export default {
 }
 </script>
 
+---
+
+## 🎨 Stil (CSS) - Oförändrad
+
+> **Obs:** CSS-koden nedan är oförändrad från din ursprungliga text, och är nödvändig för designen.
+
+```css
 <style scoped>
 .dashboard {
   max-width: 1200px;
@@ -243,34 +251,13 @@ export default {
   animation: float 3s ease-in-out infinite;
 }
 
-.balloon1 {
-  top: 0;
-  right: 0;
-  animation-delay: 0s;
-}
-
-.balloon2 {
-  top: 30px;
-  right: 40px;
-  animation-delay: 1s;
-}
-
-.balloon3 {
-  top: -10px;
-  right: 80px;
-  animation-delay: 2s;
-}
+.balloon1 { top: 0; right: 0; animation-delay: 0s; }
+.balloon2 { top: 30px; right: 40px; animation-delay: 1s; }
+.balloon3 { top: -10px; right: 80px; animation-delay: 2s; }
 
 @keyframes float {
-
-  0%,
-  100% {
-    transform: translateY(0px) rotate(0deg);
-  }
-
-  50% {
-    transform: translateY(-10px) rotate(5deg);
-  }
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(5deg); }
 }
 
 /* Välkomstsektion */
@@ -292,7 +279,7 @@ export default {
   padding: 30px;
   border-radius: 35px;
   position: relative;
-  box-shadow: 0 15px 35px rgba(255, 107, 107, 0.3);
+  box-shadow: 0 15px 35px rgba(255,107,107,0.3);
   animation: bounceIn 1s ease-out;
 }
 
@@ -310,7 +297,7 @@ export default {
 .welcome-bubble h1 {
   margin: 0 0 10px 0;
   font-size: 2.5em;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
 }
 
 .welcome-bubble p {
@@ -328,17 +315,8 @@ export default {
 }
 
 @keyframes sparkle {
-
-  0%,
-  100% {
-    opacity: 0.7;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1.1);
-  }
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
 }
 
 .user-info-bubble {
@@ -346,7 +324,7 @@ export default {
   background: rgba(255, 255, 255, 0.95);
   padding: 20px;
   border-radius: 25px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
   backdrop-filter: blur(10px);
 }
 
@@ -390,14 +368,14 @@ export default {
   align-items: center;
   gap: 8px;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+  box-shadow: 0 4px 15px rgba(255,107,107,0.3);
   font-size: 0.9em;
 }
 
 .logout-btn:hover {
   transform: scale(1.05);
   background: linear-gradient(135deg, #FF5252, #FF0000);
-  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.5);
+  box-shadow: 0 6px 20px rgba(255,107,107,0.5);
 }
 
 /* Framstegs-bubblor */
@@ -415,7 +393,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 20px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
   backdrop-filter: blur(10px);
   animation: slideUp 0.8s ease-out;
 }
@@ -474,7 +452,7 @@ export default {
   padding: 30px;
   border-radius: 35px;
   margin-bottom: 30px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.1);
   backdrop-filter: blur(10px);
 }
 
@@ -512,42 +490,23 @@ export default {
   transition: all 0.3s ease;
   overflow: hidden;
   color: white;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
   animation: cardAppear 0.6s ease-out;
 }
 
 .explore-card:hover {
   transform: translateY(-8px) scale(1.05);
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.25);
 }
 
-.card-1 {
-  background: linear-gradient(135deg, #FF6B6B, #FF8E53);
-}
-
-.card-2 {
-  background: linear-gradient(135deg, #4ECDC4, #44A08D);
-}
-
-.card-3 {
-  background: linear-gradient(135deg, #FFD700, #FF8E00);
-}
-
-.card-4 {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-}
-
-.card-5 {
-  background: linear-gradient(135deg, #FD746C, #FF9068);
-}
-
-.card-6 {
-  background: linear-gradient(135deg, #A8FF78, #78FFD6);
-}
-
-.card-quiz {
-  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
-}
+/* De unika färgklasserna som nu används via dynamisk bindning i v-for */
+.card-1 { background: linear-gradient(135deg, #FF6B6B, #FF8E53); }
+.card-2 { background: linear-gradient(135deg, #4ECDC4, #44A08D); }
+.card-3 { background: linear-gradient(135deg, #FFD700, #FF8E00); }
+.card-4 { background: linear-gradient(135deg, #667eea, #764ba2); }
+.card-5 { background: linear-gradient(135deg, #FD746C, #FF9068); }
+.card-6 { background: linear-gradient(135deg, #A8FF78, #78FFD6); }
+.card-quiz { background: linear-gradient(135deg, #FF9A8B, #FF6A88); }
 
 .card-wave {
   position: absolute;
@@ -555,7 +514,7 @@ export default {
   left: 0;
   right: 0;
   height: 20px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255,255,255,0.2);
   border-radius: 50% 50% 0 0;
 }
 
@@ -568,14 +527,14 @@ export default {
 .explore-card h3 {
   margin: 0 0 8px 0;
   font-size: 1.3em;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
 }
 
 .explore-card p {
   margin: 0;
   opacity: 0.9;
   font-size: 0.9em;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
 }
 
 .card-sparkle {
@@ -587,17 +546,8 @@ export default {
 }
 
 @keyframes twinkle {
-
-  0%,
-  100% {
-    opacity: 0.5;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1.2);
-  }
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
 }
 
 /* Snabbåtgärder */
@@ -606,7 +556,7 @@ export default {
   padding: 25px;
   border-radius: 30px;
   margin-bottom: 25px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
   backdrop-filter: blur(10px);
 }
 
@@ -645,29 +595,18 @@ export default {
   align-items: center;
   gap: 8px;
   transition: all 0.3s ease;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
 }
 
 .action-btn:hover {
   transform: scale(1.05);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.5);
 }
 
-.listen-btn {
-  background: linear-gradient(135deg, #FF6B6B, #FF8E53);
-}
-
-.match-btn {
-  background: linear-gradient(135deg, #4ECDC4, #44A08D);
-}
-
-.speak-btn {
-  background: linear-gradient(135deg, #FFD700, #FF8E00);
-}
-
-.quiz-btn {
-  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
-}
+.listen-btn { background: linear-gradient(135deg, #FF6B6B, #FF8E53); }
+.match-btn { background: linear-gradient(135deg, #4ECDC4, #44A08D); }
+.speak-btn { background: linear-gradient(135deg, #FFD700, #FF8E00); }
+.quiz-btn { background: linear-gradient(135deg, #FF9A8B, #FF6A88); }
 
 .btn-emoji {
   font-size: 1.5em;
@@ -685,7 +624,7 @@ export default {
   background: rgba(255, 255, 255, 0.95);
   padding: 20px 30px;
   border-radius: 25px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
   backdrop-filter: blur(10px);
   animation: pulse 2s ease-in-out infinite;
 }
@@ -708,59 +647,25 @@ export default {
 
 /* Animationer */
 @keyframes bounceIn {
-  0% {
-    transform: scale(0.3);
-    opacity: 0;
-  }
-
-  50% {
-    transform: scale(1.05);
-  }
-
-  70% {
-    transform: scale(0.9);
-  }
-
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.05); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 @keyframes slideUp {
-  0% {
-    transform: translateY(30px);
-    opacity: 0;
-  }
-
-  100% {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  0% { transform: translateY(30px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
 }
 
 @keyframes cardAppear {
-  0% {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 @keyframes pulse {
-
-  0%,
-  100% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.02);
-  }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
 }
 
 /* Responsiv design */
@@ -768,31 +673,30 @@ export default {
   .welcome-container {
     flex-direction: column;
   }
-
+  
   .progress-bubbles {
     grid-template-columns: 1fr;
   }
-
+  
   .explore-cards {
     grid-template-columns: 1fr;
   }
-
+  
   .action-buttons {
     grid-template-columns: repeat(2, 1fr);
   }
-
+  
   .encouragement-message {
     flex-direction: column;
     text-align: center;
   }
-
+  
   .floating-balloons {
     display: none;
   }
-
+  
   .user-details {
     flex-direction: column;
     gap: 15px;
   }
-}
-</style>
+}</style>

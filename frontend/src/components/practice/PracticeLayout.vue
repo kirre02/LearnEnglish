@@ -8,13 +8,15 @@
 import ListenPractice from './ListenPractice.vue'
 import MatchPractice from './MatchPractice.vue'
 import SpeakPractice from './SpeakPractice.vue'
+import Quiz from './Quiz.vue' // 👈 Nu finns Quiz i samma mapp!
 
 export default {
   name: 'PracticeLayout',
   components: {
     ListenPractice,
     MatchPractice,
-    SpeakPractice
+    SpeakPractice,
+    Quiz
   },
   computed: {
     practiceType() {
@@ -24,7 +26,8 @@ export default {
       const componentMap = {
         'listen': 'ListenPractice',
         'match': 'MatchPractice', 
-        'speak': 'SpeakPractice'
+        'speak': 'SpeakPractice',
+        'quiz': 'Quiz'
       }
       return componentMap[this.practiceType] || 'ListenPractice'
     }
@@ -36,5 +39,4 @@ export default {
 .practice-layout {
   min-height: 100vh;
   background-color: #f7f3ed;
-}
-</style>
+}</style>

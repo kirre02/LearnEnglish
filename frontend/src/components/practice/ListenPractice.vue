@@ -12,8 +12,17 @@
         </div>
       </div>
 
+      <!-- Laddningsskärm -->
+      <div v-if="loading" class="loading-container">
+        <div class="loading-bubble">
+          <div class="loading-emoji">⏳</div>
+          <h3>Hämtar övningsord...</h3>
+          <p>Var god vänta medan vi förbereder din lyssnarövning!</p>
+        </div>
+      </div>
+
       <!-- Practice Content -->
-      <div class="practice-content">
+      <div v-else class="practice-content">
         <div class="question-section">
           <button @click="playQuestionAudio" class="audio-btn-large" :disabled="audioLoading">
             <span v-if="audioLoading">⏳</span>
@@ -23,7 +32,12 @@
           <p class="sub-instruction" v-if="!hasPlayedAudio">⏺️ Tryck på högtalaren för att börja</p>
         </div>
 
-        <div class="options-container">
+        <div 
+          class="options-container"
+          @mousemove="handleMouseMove"
+          ref="optionsContainer"
+          @mouseleave="stopAutoScroll"
+        >
           <button 
             v-for="(option, index) in currentQuestion.options" 
             :key="index"
@@ -40,7 +54,12 @@
           <div class="feedback-bubble" :class="feedbackClass">
             <div class="feedback-emoji">{{ feedbackEmoji }}</div>
             <div class="feedback-text">{{ feedbackText }}</div>
-            <button @click="nextQuestion" class="next-btn">
+            <button 
+              @click="nextQuestion" 
+              class="next-btn"
+              ref="nextButton"
+              @keydown.enter.space="nextQuestion"
+              tabindex="0">
               {{ isLastQuestion ? 'Avsluta övning' : 'Nästa fråga' }} →
             </button>
           </div>
@@ -54,128 +73,22 @@
 export default {
   name: 'ListenPractice',
   data() {
-    // Funktion för att blanda array (Fisher-Yates shuffle)
-    const shuffleArray = (array) => {
-      const shuffled = [...array];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-      return shuffled;
-    };
-
-    // Alla tillgängliga frågor
-    const allQuestions = [
-      {
-        audioText: "Hello",
-        options: [
-          { text: "Hej", correct: true },
-          { text: "Tack", correct: false },
-          { text: "Adjö", correct: false },
-          { text: "Ursäkta", correct: false }
-        ]
-      },
-      {
-        audioText: "Apple",
-        options: [
-          { text: "Äpple", correct: true },
-          { text: "Banan", correct: false },
-          { text: "Apelsin", correct: false },
-          { text: "Päron", correct: false }
-        ]
-      },
-      {
-        audioText: "Thank you",
-        options: [
-          { text: "Tack", correct: true },
-          { text: "Hej", correct: false },
-          { text: "Förlåt", correct: false },
-          { text: "Varsågod", correct: false }
-        ]
-      },
-      {
-        audioText: "Water",
-        options: [
-          { text: "Vatten", correct: true },
-          { text: "Mjölk", correct: false },
-          { text: "Juice", correct: false },
-          { text: "Kaffe", correct: false }
-        ]
-      },
-      {
-        audioText: "Goodbye",
-        options: [
-          { text: "Hejdå", correct: true },
-          { text: "God morgon", correct: false },
-          { text: "God natt", correct: false },
-          { text: "Välkommen", correct: false }
-        ]
-      },
-      {
-        audioText: "Book",
-        options: [
-          { text: "Bok", correct: true },
-          { text: "Penna", correct: false },
-          { text: "Papper", correct: false },
-          { text: "Skrivbok", correct: false }
-        ]
-      },
-      {
-        audioText: "House",
-        options: [
-          { text: "Hus", correct: true },
-          { text: "Bil", correct: false },
-          { text: "Träd", correct: false },
-          { text: "Gata", correct: false }
-        ]
-      },
-      {
-        audioText: "Cat",
-        options: [
-          { text: "Katt", correct: true },
-          { text: "Hund", correct: false },
-          { text: "Fågel", correct: false },
-          { text: "Fisk", correct: false }
-        ]
-      },
-      {
-        audioText: "School",
-        options: [
-          { text: "Skola", correct: true },
-          { text: "Arbete", correct: false },
-          { text: "Hem", correct: false },
-          { text: "Park", correct: false }
-        ]
-      },
-      {
-        audioText: "Car",
-        options: [
-          { text: "Bil", correct: true },
-          { text: "Cykel", correct: false },
-          { text: "Buss", correct: false },
-          { text: "Tåg", correct: false }
-        ]
-      }
-    ];
-
-    // Förbered frågor med slumpmässiga alternativ
-    const preparedQuestions = allQuestions.map(question => {
-      return {
-        ...question,
-        options: shuffleArray([...question.options]) // Blanda svarsalternativen
-      };
-    });
-
     return {
       currentQuestionIndex: 0,
       answered: false,
       selectedAnswer: null,
       audioLoading: false,
-      hasPlayedAudio: false, // NY: Spelat upp ljud för denna fråga
+      hasPlayedAudio: false,
       score: 0,
-      questions: shuffleArray(preparedQuestions), // Blanda både frågor och alternativ
-      allQuestions: allQuestions,
-      shuffleArray: shuffleArray
+      questions: [],
+      loading: true,
+      allWords: [], // Lagra alla ord från databasen
+      
+      // DATA FÖR AUTO-SCROLL
+      autoScrollSpeed: 4,
+      isAutoScrolling: false,
+      scrollAnimation: null,
+      scrollSpeed: 0,
     }
   },
   computed: {
@@ -204,21 +117,149 @@ export default {
       return this.selectedAnswer?.correct === true;
     }
   },
+  async mounted() {
+    await this.loadQuestionsFromDatabase();
+  },
   methods: {
+    // Funktion för att blanda array (Fisher-Yates shuffle)
+    shuffleArray(array) {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    },
+
+    async loadQuestionsFromDatabase() {
+      this.loading = true;
+      try {
+        // Hämta alla ord från databasen
+        const response = await fetch('http://localhost:9001/api/words');
+        if (!response.ok) throw new Error('Kunde inte hämta ord från databasen');
+        
+        this.allWords = await response.json();
+        
+        if (this.allWords.length === 0) {
+          throw new Error('Inga ord hittades i databasen');
+        }
+
+        // Välj 10 slumpmässiga ord (mindre än quiz för lyssnarövning)
+        const randomWords = this.shuffleArray([...this.allWords]).slice(0, 10);
+
+        // Skapa lyssnarfrågor från databasorden
+        this.questions = randomWords.map(word => {
+          // Hämta felaktiga alternativ från wrong_options eller skapa egna
+          const wrongOptions = JSON.parse(word.wrong_options || '[]');
+          
+          // Om det inte finns nog med felaktiga alternativ, skapa några från andra ord
+          let additionalWrongOptions = [];
+          if (wrongOptions.length < 3) {
+            const otherWords = this.shuffleArray(
+              this.allWords.filter(w => w.swedish !== word.swedish)
+            ).slice(0, 3 - wrongOptions.length);
+            additionalWrongOptions = otherWords.map(w => w.swedish);
+          }
+
+          // Skapa alla felaktiga alternativ
+          const allWrongOptions = [
+            ...wrongOptions.slice(0, 3),
+            ...additionalWrongOptions
+          ].slice(0, 3); // Ta max 3 felaktiga
+
+          // Skapa alternativ (rätt svar + 3 felaktiga)
+          const options = this.shuffleArray([
+            { text: word.swedish, correct: true }, // Rätt svar på svenska
+            ...allWrongOptions.map(opt => ({ text: opt, correct: false }))
+          ]);
+
+          return {
+            audioText: word.english, // Engelska ordet som spelas upp
+            options: options, // Svenska alternativ
+            hint: `Lyssna på "${word.english}"`
+          };
+        });
+
+        console.log('Laddade lyssnarfrågor från databasen:', this.questions.length);
+
+      } catch (error) {
+        console.error('Error loading listening questions from database:', error);
+        this.useFallbackQuestions();
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    useFallbackQuestions() {
+      const fallbackQuestions = [
+        {
+          audioText: "Hello",
+          options: [
+            { text: "Hej", correct: true },
+            { text: "Tack", correct: false },
+            { text: "Adjö", correct: false },
+            { text: "Ursäkta", correct: false }
+          ]
+        },
+        {
+          audioText: "Apple",
+          options: [
+            { text: "Äpple", correct: true },
+            { text: "Banan", correct: false },
+            { text: "Apelsin", correct: false },
+            { text: "Päron", correct: false }
+          ]
+        },
+        {
+          audioText: "Thank you",
+          options: [
+            { text: "Tack", correct: true },
+            { text: "Hej", correct: false },
+            { text: "Förlåt", correct: false },
+            { text: "Varsågod", correct: false }
+          ]
+        },
+        {
+          audioText: "Water",
+          options: [
+            { text: "Vatten", correct: true },
+            { text: "Mjölk", correct: false },
+            { text: "Juice", correct: false },
+            { text: "Kaffe", correct: false }
+          ]
+        },
+        {
+          audioText: "Goodbye",
+          options: [
+            { text: "Hejdå", correct: true },
+            { text: "God morgon", correct: false },
+            { text: "God natt", correct: false },
+            { text: "Välkommen", correct: false }
+          ]
+        }
+      ];
+      
+      this.questions = this.shuffleArray(fallbackQuestions);
+      console.log('Använder fallback-frågor för lyssning');
+    },
+
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
     },
+
     getOptionClass(option) {
       if (!this.answered) return '';
       if (option.correct) return 'correct';
       if (option === this.selectedAnswer) return 'incorrect';
       return '';
     },
+
     async playQuestionAudio() {
       await this.playAudio(this.currentQuestion.audioText);
-      this.hasPlayedAudio = true; // NY: Markera att ljud har spelats upp
+      this.hasPlayedAudio = true;
     },
+
     async playAudio(text) {
       try {
         if (this.audioLoading) return;
@@ -251,47 +292,197 @@ export default {
         this.audioLoading = false;
       }
     },
+
+    // AUTO-SCROLL METODER
+    handleMouseMove(event) {
+      if (this.answered) {
+        this.stopAutoScroll();
+        return;
+      }
+      
+      const container = this.$refs.optionsContainer;
+      if (!container) return;
+      
+      const mouseY = event.clientY;
+      const scrollZoneHeight = window.innerHeight * 0.15;
+      const topZone = scrollZoneHeight;
+      const bottomZone = window.innerHeight - scrollZoneHeight;
+      
+      let newScrollSpeed = 0;
+      
+      if (mouseY < topZone) { 
+        newScrollSpeed = -this.autoScrollSpeed;
+      } else if (mouseY > bottomZone) { 
+        newScrollSpeed = this.autoScrollSpeed;
+      } 
+      
+      if (newScrollSpeed !== 0 && !this.isAutoScrolling) {
+        this.startAutoScroll(newScrollSpeed);
+        this.setScrollVisualFeedback(newScrollSpeed < 0 ? 'top' : 'bottom');
+      } else if (newScrollSpeed === 0 && this.isAutoScrolling) {
+        this.stopAutoScroll();
+      } else if (this.isAutoScrolling && this.scrollSpeed !== newScrollSpeed) {
+        this.stopAutoScroll();
+        this.startAutoScroll(newScrollSpeed);
+        this.setScrollVisualFeedback(newScrollSpeed < 0 ? 'top' : 'bottom');
+      }
+    },
+
+    startAutoScroll(speed) {
+      this.isAutoScrolling = true;
+      this.scrollSpeed = speed;
+
+      const scroll = () => {
+        if (!this.isAutoScrolling) return;
+        window.scrollBy(0, speed);
+        this.scrollAnimation = requestAnimationFrame(scroll);
+      };
+      
+      if (this.scrollAnimation) {
+        cancelAnimationFrame(this.scrollAnimation);
+      }
+      this.scrollAnimation = requestAnimationFrame(scroll);
+    },
+
+    setScrollVisualFeedback(direction) {
+      const container = this.$refs.optionsContainer;
+      if (!container) return;
+      container.classList.remove('scroll-top', 'scroll-bottom'); 
+      if (direction === 'top') {
+        container.classList.add('scroll-top');
+      } else if (direction === 'bottom') {
+        container.classList.add('scroll-bottom');
+      } 
+    },
+
+    stopAutoScroll() {
+      this.isAutoScrolling = false;
+      this.scrollSpeed = 0;
+      this.setScrollVisualFeedback('none');
+      if (this.scrollAnimation) {
+        cancelAnimationFrame(this.scrollAnimation);
+        this.scrollAnimation = null;
+      }
+    },
+
     checkAnswer(selectedOption) {
+      this.stopAutoScroll(); 
       this.answered = true;
       this.selectedAnswer = selectedOption;
       
       if (selectedOption.correct) {
         this.score++;
       }
+      
+      this.$nextTick(() => {
+        setTimeout(() => {
+          this.scrollToNextButton();
+          this.focusNextButton();
+        }, 300);
+      });
     },
+
+    scrollToNextButton() {
+      const nextButton = this.$refs.nextButton;
+      if (nextButton) {
+        nextButton.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }
+    },
+
+    focusNextButton() {
+      this.$nextTick(() => {
+        const nextButton = this.$refs.nextButton;
+        if (nextButton) {
+          nextButton.focus();
+        }
+      });
+    },
+
     nextQuestion() {
+      this.stopAutoScroll();
       if (this.isLastQuestion) {
         this.finishPractice();
       } else {
         this.currentQuestionIndex++;
         this.answered = false;
         this.selectedAnswer = null;
-        this.hasPlayedAudio = false; // NY: Återställ för nästa fråga
+        this.hasPlayedAudio = false;
         
-        // TA BORT automatisk uppspelning - användaren måste klicka själv
+        this.$nextTick(() => {
+          const questionElement = document.querySelector('.question-section');
+          if (questionElement) {
+            questionElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
       }
     },
+
     finishPractice() {
-      // Spara progress
       this.savePracticeProgress();
       alert(`Övning avslutad! 🎉\nDu fick ${this.score} av ${this.questions.length} rätt!`);
       this.$router.push('/dashboard');
     },
+
     savePracticeProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
       progress.listeningPractice = (progress.listeningPractice || 0) + 1;
       progress.learnedWords = Math.min(125, (progress.learnedWords || 0) + this.score);
       localStorage.setItem('learningProgress', JSON.stringify(progress));
     },
+
     goBack() {
       this.$router.back();
     }
+  },
+  beforeUnmount() {
+    this.stopAutoScroll();
   }
-  // TA BORT mounted() - ingen automatisk uppspelning längre
 }
 </script>
 
 <style scoped>
+/* Lägg till laddningsstilar */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.loading-bubble {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  color: white;
+  padding: 40px;
+  border-radius: 25px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3);
+}
+
+.loading-emoji {
+  font-size: 4em;
+  margin-bottom: 20px;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-bubble h3 {
+  margin: 0 0 15px 0;
+  font-size: 1.5em;
+}
+
+.loading-bubble p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* Behåll alla dina ursprungliga CSS-stilar här */
 .practice-page {
   min-height: 100vh;
   background-color: #f7f3ed;
@@ -398,6 +589,9 @@ export default {
   display: grid;
   gap: 15px;
   margin-bottom: 30px;
+  position: relative;
+  min-height: 400px;
+  transition: all 0.3s ease;
 }
 
 .option-btn {
@@ -477,11 +671,61 @@ export default {
   font-weight: bold;
   font-size: 1em;
   transition: all 0.3s ease;
+  outline: none;
+}
+
+.next-btn:focus {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
 }
 
 .next-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* Auto-scroll CSS */
+.options-container.scroll-top {
+  box-shadow: inset 0 10px 20px -10px rgba(255, 107, 107, 0.5);
+}
+
+.options-container.scroll-bottom {
+  box-shadow: inset 0 -10px 20px -10px rgba(78, 205, 196, 0.5);
+}
+
+.options-container::before,
+.options-container::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 20%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+.options-container::before {
+  top: 0;
+  background: linear-gradient(to bottom, 
+    rgba(255, 107, 107, 0.2) 0%, 
+    transparent 100%);
+}
+
+.options-container::after {
+  bottom: 0;
+  background: linear-gradient(to top, 
+    rgba(78, 205, 196, 0.2) 0%, 
+    transparent 100%);
+}
+
+.options-container.scroll-top::before {
+  opacity: 1;
+}
+
+.options-container.scroll-bottom::after {
+  opacity: 1;
 }
 
 @keyframes slideUp {
@@ -497,6 +741,10 @@ export default {
   
   .progress-info {
     text-align: center;
+  }
+  
+  .options-container {
+    min-height: 300px;
   }
 }
 </style>

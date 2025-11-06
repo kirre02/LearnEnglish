@@ -337,8 +337,12 @@ export default {
     if (!this.isSpeechSupported) {
       console.log('Web Speech API är inte tillgängligt i denna webbläsare');
     }
+
+    this.fetchQuizQuestions();
+
   },
   methods: {
+    
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
@@ -441,6 +445,8 @@ export default {
     goToDashboard() {
       this.$router.push('/dashboard');
     },
+
+
     // Gå till resultat-sida (från gren 4)
     goToAllResults() {
       // Lägg till query-parameter för att visa resultat vid återkomst
@@ -517,13 +523,15 @@ export default {
   beforeUnmount() {
     if (this.isSpeechSupported) {
       speechSynthesis.cancel();
+
     }
   }
 }
+
 </script>
 
 <style scoped>
-/* Samma CSS som tidigare - inga ändringar behövs */
+
 .quiz-page-container {
   min-height: 100vh;
   background-color: #f7f3ed;
@@ -581,6 +589,8 @@ export default {
   background: linear-gradient(135deg, #FF9A8B, #FF6A88);
   transition: width 0.3s ease;
 }
+
+
 .question-bubble {
   background: linear-gradient(135deg, #FF9A8B, #FF6A88);
   color: white;
