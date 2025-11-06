@@ -33,17 +33,41 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: Dashboard
-  },   {
-    path: '/results',
-    name: 'Results',
+  },
+  {
+    // Resultat-sida från båda versioner
+    path: '/quiz-results',
+    alias: '/results',
+    name: 'QuizResults',
     component: QuizResults
-  },   {
+  },
+  {
+    // Practice modes från gren 5
     path: '/practice/:type',
     name: 'Practice',
     component: PracticeLayout,
     props: true
   }, 
   {
+    // Practice result routes från gren 5
+    path: '/practice/listen/results',
+    component: () => import('./components/practice/ListenPractice.vue')   
+  },
+  {
+    path: '/practice/match/results',
+    component: () => import('./components/practice/MatchPractice.vue')
+  },
+  {
+    path: '/practice/speak/results',
+    component: () => import('./components/practice/SpeakPractice.vue')
+  },
+  {
+    path: '/practice/quiz/results',
+    alias: '/quiz/results',
+    component: () => import('./components/practice/Quiz.vue')
+  },
+  {
+    // Kategori routes från main
     path: '/djur',
     name: 'Djur',
     component: Djur
@@ -80,4 +104,4 @@ const router = createRouter({
   routes
 })
 
-export default router  
+export default router
