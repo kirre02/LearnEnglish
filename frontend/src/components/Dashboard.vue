@@ -12,6 +12,12 @@
           <div class="bubble-tail"></div>
           <h1>Hej {{ user.name }}! 🎉</h1>
           <p>Vad kul att du är här! Vad vill du göra idag?</p>
+          
+          <!-- PROFIL-KNAPP MED KORREKT INDDRAGNING -->
+          <button class="profile-action-btn" @click="goToProfile">
+            👤 Min Profil
+          </button>
+          
           <div class="sparkles">✨✨✨</div>
         </div>
         
@@ -19,8 +25,7 @@
           :learnedWords="learnedWords"
           @logout="handleLogout"
           @show-profile="goToProfile" 
-          class="user-info-bubble-position"/> 
-
+          class="user-info-bubble-position"/>
       </div>
     </div>
 
@@ -188,12 +193,10 @@ export default {
     }
   },
   async mounted() {
-    // Token-kontroll från din version
     if (!localStorage.getItem('token')) {
       this.$router.push('/');
     }
     
-    // Seydas quiz results kod
     try {
       const userId = 1;
       const res = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
@@ -225,7 +228,6 @@ export default {
       console.error("❌ Fel vid hämtning av quizresultat:", err);
     }
 
-    // Din progress loading funktioner
     await this.loadUserProgress();
     this.checkForSavedQuiz();
   },
@@ -256,32 +258,26 @@ export default {
       this.completedQuizzes = progress.completedQuizzes || 0;
     },
 
-    // NY: Kolla om det finns ett sparad quiz
     checkForSavedQuiz() {
       const savedQuiz = localStorage.getItem('savedQuizState');
       this.hasSavedQuiz = !!savedQuiz;
     },
 
-    // NY: Visa quiz-alternativ modal
     showQuizOptions() {
       this.showQuizModal = true;
     },
 
-    // NY: Stäng modal
     closeQuizModal() {
       this.showQuizModal = false;
     },
 
-    // NY: Fortsätt sparad quiz
     continueSavedQuiz() {
       this.closeQuizModal();
       this.$router.push({ path: '/practice/quiz', query: { continue: 'true' } });
     },
 
-    // NY: Starta nytt quiz
     startNewQuiz() {
       this.closeQuizModal();
-      // Rensa eventuell sparad quiz-state för att starta nytt
       localStorage.removeItem('savedQuizState');
       localStorage.removeItem('currentQuizState');
       this.$router.push('/practice/quiz');
@@ -344,7 +340,6 @@ export default {
   overflow-x: hidden;
 }
 
-/* Flytande ballonger */
 .floating-balloons {
   position: absolute;
   top: 20px;
@@ -367,11 +362,10 @@ export default {
   50% { transform: translateY(-10px) rotate(5deg); }
 }
 
-/* Välkomstsektion */
 .top-section {
   position: relative;
   margin-bottom: 30px;
-  z-index: 15; /* HÖGRE än ballongerna så bubblorna är framför */
+  z-index: 15;
 }
 
 .welcome-container {
@@ -390,6 +384,8 @@ export default {
   position: relative;
   box-shadow: 0 15px 35px rgba(255,107,107,0.3);
   animation: bounceIn 1s ease-out;
+  display: flex; 
+  flex-direction: column;
 }
 
 .bubble-tail {
@@ -428,14 +424,33 @@ export default {
   50% { opacity: 1; transform: scale(1.1); }
 }
 
-/* NYTT: UserInfoBubble positionering */
-.user-info-bubble-position {
-    position: relative; 
-    z-index: 20;
-    align-self: flex-start;
+.profile-action-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid white;
+  padding: 10px 20px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1em;
+  margin-top: 15px;
+  align-self: flex-start;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
-/* NY: Quiz Modal Styles (BEHÅLLS) */
+.profile-action-btn:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
+}
+
+.user-info-bubble-position {
+  position: relative; 
+  z-index: 20;
+  align-self: flex-start;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -590,7 +605,6 @@ export default {
   border-color: #dee2e6;
 }
 
-/* Framstegs-bubblor (BEHÅLLS) */
 .progress-bubbles.three-columns {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -663,7 +677,6 @@ export default {
   color: #333;
 }
 
-/* Utforska-sektion (BEHÅLLS) */
 .explore-section {
   background: rgba(255, 255, 255, 0.95);
   padding: 30px;
@@ -716,7 +729,6 @@ export default {
   box-shadow: 0 15px 35px rgba(0,0,0,0.25);
 }
 
-/* De unika färgklasserna som nu används via dynamisk bindning i v-for */
 .card-1 { background: linear-gradient(135deg, #FF6B6B, #FF8E53); }
 .card-2 { background: linear-gradient(135deg, #4ECDC4, #44A08D); }
 .card-3 { background: linear-gradient(135deg, #FFD700, #FF8E00); }
@@ -766,7 +778,6 @@ export default {
   50% { opacity: 1; transform: scale(1.2); }
 }
 
-/* Snabbåtgärder (BEHÅLLS) */
 .quick-actions {
   background: rgba(255, 255, 255, 0.95);
   padding: 25px;
@@ -850,7 +861,6 @@ export default {
   box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
 }
 
-/* Uppmuntrande footer (BEHÅLLS) */
 .encouragement-footer {
   text-align: center;
 }
@@ -883,7 +893,6 @@ export default {
   font-size: 0.9em;
 }
 
-/* Animationer (BEHÅLLS) */
 @keyframes bounceIn {
   0% { transform: scale(0.3); opacity: 0; }
   50% { transform: scale(1.05); }
@@ -911,9 +920,6 @@ export default {
   100% { opacity: 1; }
 }
 
-/* ---------------------------------------------------- */
-/* Responsiv design */
-/* ---------------------------------------------------- */
 @media (max-width: 768px) {
   .welcome-container {
     flex-direction: column;
@@ -956,23 +962,17 @@ export default {
   }
 }
 
-/* ---------------------------------------------------- */
-/* MEDIA QUERY - DESKTOP LAYOUT (min-width: 769px) */
-/* ---------------------------------------------------- */
 @media (min-width: 769px) {
-    /* UserInfoBubble: Absolut positionering och HÖGRE upp */
-    .user-info-bubble-position {
-        position: absolute; 
-        right: 0px; 
-        top: 90px; /* JUSTERAD FÖR ATT FLYTTA HÖGRE UPP */
-        flex-shrink: 0;
-    }
+  .user-info-bubble-position {
+    position: absolute; 
+    right: 0px; 
+    top: 90px;
+    flex-shrink: 0;
+  }
 
-    /* Welcome Bubble: Ge plats för den lilla bubblan så den inte överlappar texten */
-    .welcome-bubble {
-        flex: 2; 
-        /* Denna marginal förhindrar att texten i welcome-bubble går för långt åt höger */
-        margin-right: 180px; 
-    }
+  .welcome-bubble {
+    flex: 2; 
+    margin-right: 180px; 
+  }
 }
 </style>
