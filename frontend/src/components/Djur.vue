@@ -332,39 +332,52 @@ export default {
       });
     },
 
-    async loadPastResults() {
-      this.loading = true;
-      try {
-        const user = JSON.parse(localStorage.getItem('user'));
-        const userId = user?.id || 1;
-        
-        console.log("🔍 Hämtar resultat för user_id:", userId);
-        
-        const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
-        
-        if (!response.ok) {
-          console.error("❌ API fel:", response.status);
-          throw new Error('Kunde inte hämta quizresultat');
-        }
+  async loadPastResults() {
+  this.loading = true;
+  try {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const userId = user?.id || 1;
+    
+    console.log("🔍 Hämtar resultat för user_id:", userId);
+    
+    const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
+    
+    if (!response.ok) {
+      console.error("❌ API fel:", response.status);
+      throw new Error('Kunde inte hämta quizresultat');
+    }
 
-        const data = await response.json();
-        console.log("📊 Data från API:", data);
-        
-        this.results = data
-          .filter(r => {
-            const type = r.quiz_type ? r.quiz_type.toLowerCase() : '';
-            return type === 'djur';
-          })
-          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const allData = await response.json();
+    console.log("📊 ALLA Data från API:", allData);
+    
+    // Visa ALLA quiz_type värden som finns
+    const quizTypes = [...new Set(allData.map(r => r.quiz_type))];
+    console.log("🎯 Quiz types som finns:", quizTypes);
+    
+    // Filtrera för djur
+    const djurResults = allData.filter(r => {
+      const type = r.quiz_type ? r.quiz_type.toLowerCase() : '';
+      return type === 'djur';
+    });
+    
+    console.log("🐾 Djur-resultat hittades:", djurResults.length);
+    
+    // ⚠️ TEMPORÄRT: Om inga djur-resultat, visa ALLA för debugging
+    if (djurResults.length === 0 && allData.length > 0) {
+      console.log("⚠️ INGA DJUR-RESULTAT! Visar ALLA resultat temporärt:");
+      this.results = allData.slice(0, 10).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    } else {
+      this.results = djurResults.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
 
-        console.log("✅ Filtrerade djurresultat:", this.results.length);
-      } catch (err) {
-        console.error("❌ Fel vid hämtning av quizresultat:", err);
-        this.results = [];
-      } finally {
-        this.loading = false;
-      }
-    },
+    console.log("✅ Resultat som visas:", this.results.length);
+  } catch (err) {
+    console.error("❌ Fel vid hämtning av quizresultat:", err);
+    this.results = [];
+  } finally {
+    this.loading = false;
+  }
+},
     // <--- SLUT UPPDATERADE METODER FÖR RESULTATHANTERING --->
 
     // BEFINTLIGA METODER
@@ -670,32 +683,52 @@ export default {
     },
 
     async saveQuizResult() {
-      try {
-        const user = JSON.parse(localStorage.getItem('user'));
-        const resultData = {
-          userId: user?.id || 1,
-          correctAnswers: this.score,
-          wrongAnswers: this.questions.length - this.score,
-          quiz_type: "djur"
-        };
+  try {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const totalQuestions = this.questions.length;
+    const percentage = Math.round((this.score / totalQuestions) * 100);
 
-        console.log("💾 Skickar quizresultat:", resultData);
+    const resultData = {
+      userId: user?.id || 1,
+      correctAnswers: this.score,
+      wrongAnswers: totalQuestions - this.score,
+      totalQuestions: totalQuestions,
+      percentage: percentage,
+      quiz_type: "djur"
+    };
 
-        const response = await fetch("http://localhost:9001/api/quiz/quiz-results", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(resultData),
-        });
+    console.log("💾 Skickar DJUR quizresultat:", resultData);
+    console.log("📝 Antal frågor:", totalQuestions);
+    console.log("🎯 Poäng:", this.score);
+    console.log("📊 Procent:", percentage + "%");
 
-        if (response.ok) {
-          console.log("✅ Quizresultat sparat!");
-        } else {
-          console.error("❌ Misslyckades att spara quizresultat:", response.status);
-        }
-      } catch (error) {
-        console.error("💥 Fel vid sparande av quizresultat:", error);
-      }
-    },
+    const response = await fetch("http://localhost:9001/api/quiz/quiz-results", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(resultData),
+    });
+
+    console.log("📨 Response status:", response.status);
+
+    if (response.ok) {
+      const savedResult = await response.json();
+      console.log("✅ DJUR Quizresultat sparat i databasen:", savedResult);
+      
+      // Ladda om resultaten direkt
+      setTimeout(() => {
+        this.loadPastResults();
+      }, 1000);
+    } else {
+      const errorText = await response.text();
+      console.error("❌ Misslyckades att spara DJUR quizresultat:", response.status, errorText);
+    }
+  } catch (error) {
+    console.error("💥 Fel vid sparande av DJUR quizresultat:", error);
+  }
+},
 
     updateProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
@@ -1028,7 +1061,6 @@ export default {
 	height: 35px;
 	display: flex;
 	align-items: center;
-	justify-content: center;
 	cursor: pointer;
 	font-size: 0.9em;
 	margin-left: auto;
@@ -1339,4 +1371,4 @@ export default {
 		box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
 	}
 }
-</style>
+</style>	justify-content: center;

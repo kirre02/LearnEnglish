@@ -326,40 +326,52 @@ export default {
       });
     },
 
-    async loadPastResults() {
-      this.loading = true;
-      try {
-        const user = JSON.parse(localStorage.getItem('user'));
-        const userId = user?.id || 1;
-        
-        console.log("🔍 Hämtar resultat för user_id:", userId);
-        
-        const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
-        
-        if (!response.ok) {
-          console.error("❌ API fel:", response.status);
-          throw new Error('Kunde inte hämta quizresultat');
-        }
+   async loadPastResults() {
+  this.loading = true;
+  try {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const userId = user?.id || 1;
+    
+    console.log("🔍 Hämtar resultat för user_id:", userId);
+    
+    const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
+    
+    if (!response.ok) {
+      console.error("❌ API fel:", response.status);
+      throw new Error('Kunde inte hämta quizresultat');
+    }
 
-        const data = await response.json();
-        console.log("📊 Data från API:", data);
-        
-        this.results = data
-          .filter(r => {
-            const type = r.quiz_type ? r.quiz_type.toLowerCase() : '';
-            return type === 'familj';
-          })
-          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const allData = await response.json();
+    console.log("📊 ALLA Data från API:", allData);
+    
+    // Visa ALLA quiz_type värden som finns
+    const quizTypes = [...new Set(allData.map(r => r.quiz_type))];
+    console.log("🎯 Quiz types som finns:", quizTypes);
+    
+    // Filtrera för djur
+    const djurResults = allData.filter(r => {
+      const type = r.quiz_type ? r.quiz_type.toLowerCase() : '';
+      return type === 'djur';
+    });
+    
+    console.log("🐾 Djur-resultat hittades:", djurResults.length);
+    
+    // ⚠️ TEMPORÄRT: Om inga djur-resultat, visa ALLA för debugging
+    if (djurResults.length === 0 && allData.length > 0) {
+      console.log("⚠️ INGA DJUR-RESULTAT! Visar ALLA resultat temporärt:");
+      this.results = allData.slice(0, 10).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    } else {
+      this.results = djurResults.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
 
-        console.log("✅ Filtrerade familjresultat:", this.results.length);
-      } catch (err) {
-        console.error("❌ Fel vid hämtning av quizresultat:", err);
-        this.results = [];
-      } finally {
-        this.loading = false;
-      }
-    },
-
+    console.log("✅ Resultat som visas:", this.results.length);
+  } catch (err) {
+    console.error("❌ Fel vid hämtning av quizresultat:", err);
+    this.results = [];
+  } finally {
+    this.loading = false;
+  }
+},
     handleKeydown(event) {
       if (this.quizFinished || this.isResultsMode) return; 
 
@@ -660,34 +672,53 @@ export default {
       localStorage.setItem('lastQuizState', JSON.stringify(quizState));
     },
 
-    async saveQuizResult() {
-      try {
-        const user = JSON.parse(localStorage.getItem('user'));
-        const resultData = {
-          userId: user?.id || 1,
-          correctAnswers: this.score,
-          wrongAnswers: this.questions.length - this.score,
-          quiz_type: "familj"
-        };
+   async saveQuizResult() {
+  try {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const totalQuestions = this.questions.length;
+    const percentage = Math.round((this.score / totalQuestions) * 100);
 
-        console.log("💾 Skickar quizresultat:", resultData);
+    const resultData = {
+      userId: user?.id || 1,
+      correctAnswers: this.score,
+      wrongAnswers: totalQuestions - this.score,
+      totalQuestions: totalQuestions,
+      percentage: percentage,
+      quiz_type: "djur"
+    };
 
-        const response = await fetch("http://localhost:9001/api/quiz/quiz-results", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(resultData),
-        });
+    console.log("💾 Skickar DJUR quizresultat:", resultData);
+    console.log("📝 Antal frågor:", totalQuestions);
+    console.log("🎯 Poäng:", this.score);
+    console.log("📊 Procent:", percentage + "%");
 
-        if (response.ok) {
-          console.log("✅ Quizresultat sparat!");
-        } else {
-          console.error("❌ Misslyckades att spara quizresultat:", response.status);
-        }
-      } catch (error) {
-        console.error("💥 Fel vid sparande av quizresultat:", error);
-      }
-    },
+    const response = await fetch("http://localhost:9001/api/quiz/quiz-results", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(resultData),
+    });
 
+    console.log("📨 Response status:", response.status);
+
+    if (response.ok) {
+      const savedResult = await response.json();
+      console.log("✅ DJUR Quizresultat sparat i databasen:", savedResult);
+      
+      // Ladda om resultaten direkt
+      setTimeout(() => {
+        this.loadPastResults();
+      }, 1000);
+    } else {
+      const errorText = await response.text();
+      console.error("❌ Misslyckades att spara DJUR quizresultat:", response.status, errorText);
+    }
+  } catch (error) {
+    console.error("💥 Fel vid sparande av DJUR quizresultat:", error);
+  }
+},
     updateProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
       progress.completedQuizzes = (progress.completedQuizzes || 0) + 1;
@@ -805,524 +836,563 @@ export default {
   }
 }
 </script>
-
 <style scoped>
 /* Familj-specifik styling med samma layout som Djur */
 .familj-page-container {
-  min-height: 100vh;
-  background-color: #f7f3ed;
-  padding: 20px;
-  font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
-  outline: none;
+	min-height: 100vh;
+	background-color: #f7f3ed;
+	padding: 20px;
+	font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+	outline: none;
 }
 
 .familj-container {
-  max-width: 600px;
-  margin: 0 auto;
+	max-width: 600px;
+	margin: 0 auto;
 }
 
 /* Header */
 .familj-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  gap: 15px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 30px;
+	gap: 15px;
 }
 
 .back-btn {
-  background: linear-gradient(135deg, #FF6B6B, #FF8E53);
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.3s ease;
+	background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+	color: white;
+	border: none;
+	padding: 10px 15px;
+	border-radius: 20px;
+	cursor: pointer;
+	font-weight: bold;
+	transition: all 0.3s ease;
 }
 
 .back-btn:hover {
-  transform: translateX(-5px);
+	transform: translateX(-5px);
 }
 
 .cancel-quiz-btn {
-  background: linear-gradient(135deg, #FF6B6B, #FF5252);
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.3s ease;
-  font-size: 0.9em;
-  white-space: nowrap;
+	background: linear-gradient(135deg, #FF6B6B, #FF5252);
+	color: white;
+	border: none;
+	padding: 10px 15px;
+	border-radius: 20px;
+	cursor: pointer;
+	font-weight: bold;
+	transition: all 0.3s ease;
+	font-size: 0.9em;
+	white-space: nowrap;
 }
 
 .cancel-quiz-btn:hover {
-  transform: scale(1.05);
-  background: linear-gradient(135deg, #FF5252, #FF0000);
+	transform: scale(1.05);
+	background: linear-gradient(135deg, #FF5252, #FF0000);
 }
 
 .quiz-progress {
-  text-align: right;
+	text-align: right;
 }
 
 .progress-text {
-  display: block;
-  margin-bottom: 5px;
-  color: #666;
-  font-size: 0.9em;
+	display: block;
+	margin-bottom: 5px;
+	color: #666;
+	font-size: 0.9em;
 }
 
 .progress-bar {
-  width: 150px;
-  height: 8px;
-  background: #e0e0e0;
-  border-radius: 10px;
-  overflow: hidden;
+	width: 150px;
+	height: 8px;
+	background: #e0e0e0;
+	border-radius: 10px;
+	overflow: hidden;
 }
 
 .progress-fill {
-  height: 100%;
-  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
-  transition: width 0.3s ease;
+	background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+	transition: width 0.3s ease;
 }
 
 /* Loading */
 .loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 400px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 400px;
 }
 
 .loading-bubble {
-  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
-  color: white;
-  padding: 40px;
-  border-radius: 25px;
-  text-align: center;
-  box-shadow: 0 10px 25px rgba(255,154,139,0.3);
+	background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+	color: white;
+	padding: 40px;
+	border-radius: 25px;
+	text-align: center;
+	box-shadow: 0 10px 25px rgba(255,154,139,0.3);
 }
 
 .loading-emoji {
-  font-size: 3em;
-  margin-bottom: 15px;
+	font-size: 3em;
+	margin-bottom: 15px;
 }
 
 .loading-bubble h3 {
-  margin: 0 0 10px 0;
-  font-size: 1.5em;
+	margin: 0 0 10px 0;
+	font-size: 1.5em;
 }
 
 .loading-bubble p {
-  margin: 0;
-  opacity: 0.9;
+	margin: 0;
+	opacity: 0.9;
 }
 
 /* Question Bubble */
 .question-bubble {
-  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
-  color: white;
-  padding: 30px;
-  border-radius: 25px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  margin-bottom: 30px;
-  box-shadow: 0 10px 25px rgba(255,154,139,0.3);
+	background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+	color: white;
+	padding: 30px;
+	border-radius: 25px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	margin-bottom: 30px;
+	box-shadow: 0 10px 25px rgba(255,154,139,0.3);
 }
 
 .question-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 15px;
-  margin-bottom: 0;
-  width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 15px;
+	margin-bottom: 0;
+	width: 100%;
 }
 
 .question-emoji {
-  font-size: 3em;
-  margin-bottom: 15px;
+	font-size: 3em;
+	margin-bottom: 15px;
 }
 
 .question-bubble h2 {
-  margin: 0 0 15px 0;
-  font-size: 1.5em;
+	margin: 0 0 15px 0;
+	font-size: 1.5em;
 }
 
 .question-hint {
-  background: rgba(255,255,255,0.2);
-  padding: 10px 15px;
-  border-radius: 15px;
-  font-size: 0.9em;
-  margin-top: 15px;
+	background: rgba(255,255,255,0.2);
+	padding: 10px 15px;
+	border-radius: 15px;
+	font-size: 0.9em;
+	margin-top: 15px;
 }
 
 /* Options */
 .options-container {
-  display: grid;
-  gap: 15px;
-  margin-bottom: 30px;
+	display: grid;
+	gap: 15px;
+	margin-bottom: 30px;
 }
 
 .option-btn {
-  background: white;
-  border: 3px solid #E2E8F0;
-  padding: 20px;
-  border-radius: 15px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  transition: all 0.3s ease;
-  font-size: 1.1em;
-  font-weight: bold;
-  position: relative;
+	background: white;
+	border: 3px solid #E2E8F0;
+	padding: 20px;
+	border-radius: 15px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 15px;
+	transition: all 0.3s ease;
+	font-size: 1.1em;
+	font-weight: bold;
+	position: relative;
 }
 
 .option-btn:hover:not(:disabled),
 .option-btn.focused {
-  transform: translateY(-3px);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-  border-color: #FF9A8B;
+	transform: translateY(-3px);
+	box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+	border-color: #FF9A8B; /* Tema färg */
 }
 
 .option-btn.correct {
-  border-color: #4ECDC4;
-  background: #4ECDC4;
-  color: white;
+	border-color: #4ECDC4;
+	background: #4ECDC4;
+	color: white;
 }
 
 .option-btn.incorrect {
-  border-color: #FF6B6B;
-  background: #FF6B6B;
-  color: white;
+	border-color: #FF6B6B;
+	background: #FF6B6B;
+	color: white;
 }
 
 .option-btn:disabled {
-  cursor: not-allowed;
+	cursor: not-allowed;
 }
 
 .option-emoji {
-  font-size: 1.2em;
+	font-size: 1.2em;
 }
 
 .option-audio-btn {
-  background: rgba(0, 0, 0, 0.1);
-  border: none;
-  border-radius: 50%;
-  width: 35px;
-  height: 35px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 0.9em;
-  margin-left: auto;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
+	background: rgba(0, 0, 0, 0.1);
+	border: none;
+	border-radius: 50%;
+	width: 35px;
+	height: 35px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	font-size: 0.9em;
+	margin-left: auto;
+	transition: all 0.3s ease;
+	flex-shrink: 0;
 }
 
 .option-audio-btn:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.2);
-  transform: scale(1.1);
+	background: rgba(0, 0, 0, 0.2);
+	transform: scale(1.1);
 }
 
 .option-audio-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
+	cursor: not-allowed;
+	opacity: 0.6;
 }
 
 /* Feedback */
 .feedback-bubble {
-  padding: 25px;
-  border-radius: 20px;
-  text-align: center;
-  animation: slideUp 0.5s ease-out;
+	padding: 25px;
+	border-radius: 20px;
+	text-align: center;
+	animation: slideUp 0.5s ease-out;
 }
 
 .feedback-bubble.correct {
-  background: linear-gradient(135deg, #4ECDC4, #44A08D);
-  color: white;
+	background: linear-gradient(135deg, #4ECDC4, #44A08D);
+	color: white;
 }
 
 .feedback-bubble.incorrect {
-  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
-  color: white;
+	background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+	color: white;
 }
 
 .feedback-emoji {
-  font-size: 3em;
-  margin-bottom: 15px;
+	font-size: 3em;
+	margin-bottom: 15px;
 }
 
 .feedback-text {
-  font-size: 1.2em;
-  margin-bottom: 20px;
+	font-size: 1.2em;
+	margin-bottom: 20px;
 }
 
 .feedback-actions {
-  display: flex;
-  gap: 15px;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
+	display: flex;
+	gap: 15px;
+	justify-content: center;
+	align-items: center;
+	flex-wrap: wrap;
 }
 
 .audio-hint-btn {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid white;
-  border-radius: 20px;
-  padding: 10px 20px;
-  color: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 0.9em;
-  min-width: 140px;
+	background: rgba(255, 255, 255, 0.2);
+	border: 1px solid white;
+	border-radius: 20px;
+	padding: 10px 20px;
+	color: white;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	font-size: 0.9em;
+	min-width: 140px;
 }
 
 .audio-hint-btn:hover:not(:disabled),
 .audio-hint-btn.focused {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
-  border-width: 2px;
+	background: rgba(255, 255, 255, 0.3);
+	transform: scale(1.05);
+	border-width: 2px;
 }
 
 .audio-hint-btn.pulse {
-  animation: pulse 1s infinite;
+	animation: pulse 1s infinite;
 }
 
 .audio-hint-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
+	cursor: not-allowed;
+	opacity: 0.6;
 }
 
 .next-btn {
-  background: white;
-  color: #333;
-  border: none;
-  padding: 12px 25px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 1em;
-  transition: all 0.3s ease;
+	background: white;
+	color: #FF9A8B; /* Ändrad färg för Next-knappen för att matcha quiz-temat */
+	border: none;
+	border-radius: 20px;
+	padding: 12px 25px;
+	cursor: pointer;
+	font-weight: bold;
+	transition: all 0.3s ease;
+	font-size: 1em;
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+	min-width: 140px;
 }
 
 .next-btn:hover,
 .next-btn.focused {
-  transform: scale(1.05);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+	transform: scale(1.05);
+	box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
 }
 
 .next-btn.pulse {
-  animation: pulse 1s infinite;
+	animation: pulse 1s infinite;
 }
 
-/* Results */
+/*
+================================
+✅ NY STANDARDISERAD RESULTAT CSS
+(Ersätter gammal/lokal resultat-styling)
+================================
+*/
+/* === RESULT SECTION (QUIZ FINISHED) === */
 .results-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 400px;
-  margin-top: 20px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 400px;
+	margin-top: 20px;
 }
 
 .results-bubble {
-  color: white;
-  padding: 50px 40px;
-  border-radius: 30px;
-  text-align: center;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  max-width: 450px;
-  width: 100%;
+	color: white;
+	padding: 50px 40px;
+	border-radius: 30px;
+	text-align: center;
+	box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+	max-width: 500px;
+	width: 90%;
+	animation: fadeInUp 0.7s ease-out; 
 }
 
 .results-bubble.excellent {
-  background: linear-gradient(135deg, #38C77F, #2ECC71);
+	background: linear-gradient(135deg, #6FE7DD, #349D9E); /* Grön/Mint */
 }
 
 .results-bubble.good {
-  background: linear-gradient(135deg, #FFC35C, #FFA000);
+	background: linear-gradient(135deg, #FFB88C, #FF6B6B); /* Orange/Röd */
 }
 
 .results-bubble.ok {
-  background: linear-gradient(135deg, #FF7B7B, #FF4F4F);
+	background: linear-gradient(135deg, #FFD1B3, #FF9A8B); /* Rosa/Peach */
 }
 
 .results-emoji {
-  font-size: 4em;
-  margin-bottom: 15px;
+	font-size: 3.5em;
+	margin-bottom: 15px;
 }
 
-.results-title {
-  font-size: 2em;
-  margin: 0 0 10px 0;
+.results-bubble h2 {
+	font-size: 2em;
+	margin-bottom: 10px;
+	font-weight: bold;
 }
 
 .results-score {
-  font-size: 1.5em;
-  font-weight: bold;
-  margin-bottom: 10px;
+	font-weight: bold;
+	font-size: 1.3em;
+	margin-bottom: 10px;
 }
 
 .results-message {
-  font-size: 1em;
-  margin-bottom: 30px;
+	font-size: 1.1em;
+	opacity: 0.95;
+	margin-bottom: 30px;
 }
 
 .results-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+	display: flex;
+	justify-content: center;
+	gap: 15px;
+	flex-wrap: wrap;
 }
 
 .action-btn {
-  background: white;
-  color: #333;
-  border: none;
-  padding: 12px 25px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 1em;
-  transition: all 0.3s ease;
+	border: none;
+	padding: 12px 25px;
+	border-radius: 25px;
+	cursor: pointer;
+	font-weight: bold;
+	color: white;
+	transition: all 0.3s ease;
+	font-size: 1em;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	min-width: 150px;
 }
 
 .action-btn:hover {
-  transform: scale(1.03);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+	transform: scale(1.05);
+	box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
 }
 
 .play-again-btn {
-  background: #FF9A8B;
-  color: white;
+	background: linear-gradient(135deg, #FF9A8B, #FF6A88); /* Familjens tema-färg */
+	color: white;
+	border: none;
+	box-shadow: 0 4px 10px rgba(255, 154, 139, 0.4);
 }
 
-.play-again-btn:hover {
-  background: #ff7a6b;
+.results-btn {
+	background: linear-gradient(135deg, #B9F5D2, #6F86D6);
+	color: white;
 }
 
-/* Results Page */
+.dashboard-btn {
+	background: linear-gradient(135deg, #FFB88C, #FF6B6B);
+	color: white;
+}
+
+
+/* === RESULTS MODE (HISTORY) === */
 .results-page {
-  padding: 20px;
-  background-color: #ffffff; 
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+	padding: 30px; 
+	background-color: #ffffff;
+	border-radius: 15px; 
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1); 
 }
 
 .results-page .results-title {
-  color: #FF9A8B;
-  text-align: center;
-  margin-bottom: 10px;
-  font-size: 2em;
+	color: #FF9A8B; /* Familjens tema-färg */
+	text-align: center;
+	margin-bottom: 15px;
+	font-size: 2.2em;
 }
 
 .results-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
+	width: 100%;
+	border-collapse: separate; 
+	border-spacing: 0;
+	margin-top: 25px;
+	overflow: hidden; 
+	border-radius: 10px; 
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .results-table th, .results-table td {
-  border: 1px solid #e0e0e0;
-  padding: 12px;
-  text-align: left;
+	border-top: 1px solid #e9e9e9;
+	padding: 15px 12px;
+	text-align: left;
 }
 
 .results-table thead th {
-  background-color: #FF9A8B;
-  color: white;
-  font-weight: bold;
+	background-color: #FF9A8B; /* Familjens tema-färg */
+	color: white;
+	font-weight: bold;
+	border-bottom: 2px solid #FF6A88;
 }
+/* Rundade hörn för thead */
+.results-table thead tr:first-child th:first-child { border-top-left-radius: 10px; }
+.results-table thead tr:first-child th:last-child { border-top-right-radius: 10px; }
+
 
 .results-table tbody tr:nth-child(even) {
-  background-color: #f7f7f7;
+	background-color: #fcfcfc;
 }
 
 .results-table tbody tr:hover {
-  background-color: #e6f7ff;
+	background-color: #fff2f1; /* Lätt rosa hover för Familj-temat */
+	transition: background-color 0.2s;
 }
 
 .no-results {
-  text-align: center;
-  color: #999;
-  font-style: italic;
-  padding: 30px;
-  border: 1px dashed #e0e0e0;
-  border-radius: 10px;
-  margin-top: 20px;
+	text-align: center;
+	color: #999;
+	font-style: italic;
+	padding: 40px;
+	border: 2px dashed #e0e0e0;
+	border-radius: 15px;
+	margin-top: 25px;
 }
 
 .back-from-results-btn {
-  margin-top: 30px;
-  background: linear-gradient(135deg, #FFC35C, #FFA000);
-  color: white;
+	margin-top: 30px;
+	background: linear-gradient(135deg, #FF6B6B, #FF8E53); /* Familjens tema-färg (tillbaka-knapp) */
+	color: white;
+	padding: 12px 25px;
+	border-radius: 25px;
+	font-weight: bold;
+	cursor: pointer;
+	border: none;
+	transition: all 0.3s ease;
 }
 
-/* Keyframes */
+.back-from-results-btn:hover {
+	transform: scale(1.05);
+	box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+}
+
+
+/* Keyframes (Kvarstår oförändrade) */
 @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 @keyframes pulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(255, 154, 139, 0.4);
-  }
-  70% {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 10px rgba(255, 154, 139, 0);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(255, 154, 139, 0);
-  }
+	0% {
+		box-shadow: 0 0 0 0 rgba(255, 154, 139, 0.4);
+	}
+	70% {
+		box-shadow: 0 0 0 10px rgba(255, 154, 139, 0);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(255, 154, 139, 0);
+	}
 }
 
 .audio-hint-btn.pulse {
-  animation: pulse 1s infinite;
+	animation: pulse 1s infinite;
 }
 
 .next-btn.pulse {
-  animation: pulse 1s infinite;
+	animation: pulse 1s infinite;
 }
 
 @media (max-width: 768px) {
-  .familj-header {
-    flex-direction: column;
-    gap: 15px;
-  }
+	.familj-header {
+		flex-direction: column;
+		gap: 15px;
+	}
 
-  .quiz-progress {
-    text-align: center;
-  }
+	.quiz-progress {
+		text-align: center;
+	}
 
-  .results-actions {
-    flex-direction: column;
-  }
+	.results-actions {
+		flex-direction: column;
+	}
 
-  .action-btn {
-    width: 100%;
-  }
+	.action-btn {
+		width: 100%;
+	}
 
-  .option-btn {
-    padding: 15px;
-  }
+	.option-btn {
+		padding: 15px;
+	}
 
-  .option-audio-btn {
-    width: 30px;
-    height: 30px;
-  }
+	.option-audio-btn {
+		width: 30px;
+		height: 30px;
+	}
 }
 </style>
