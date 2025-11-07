@@ -820,490 +820,523 @@ export default {
 <style scoped>
 /* NY CSS FÖR AVBRYT KNAPPEN */
 .cancel-quiz-btn {
-  background: linear-gradient(135deg, #FF6B6B, #FF5252);
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.3s ease;
-  font-size: 0.9em;
-  white-space: nowrap;
+	background: linear-gradient(135deg, #FF6B6B, #FF5252);
+	color: white;
+	border: none;
+	padding: 10px 15px;
+	border-radius: 20px;
+	cursor: pointer;
+	font-weight: bold;
+	transition: all 0.3s ease;
+	font-size: 0.9em;
+	white-space: nowrap;
 }
 
 .cancel-quiz-btn:hover {
-  transform: scale(1.05);
-  background: linear-gradient(135deg, #FF5252, #FF0000);
+	transform: scale(1.05);
+	background: linear-gradient(135deg, #FF5252, #FF0000);
 }
 
 /* UPPDATERAD DJUR-HEADER FÖR AVSTÅND */
 .djur-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  gap: 15px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 30px;
+	gap: 15px;
 }
 
 /* BEFINTLIG CSS MED UPPDATERINGAR */
 .djur-page-container {
-  min-height: 100vh;
-  background-color: #f7f3ed;
-  padding: 20px;
-  font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
-  outline: none;
+	min-height: 100vh;
+	background-color: #f7f3ed;
+	padding: 20px;
+	font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+	outline: none;
 }
 
 .djur-container {
-  max-width: 600px;
-  margin: 0 auto;
+	max-width: 600px;
+	margin: 0 auto;
 }
 
 .back-btn {
-  background: linear-gradient(135deg, #4ECDC4, #44A08D);
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.3s ease;
+	background: linear-gradient(135deg, #4ECDC4, #44A08D);
+	color: white;
+	border: none;
+	padding: 10px 15px;
+	border-radius: 20px;
+	cursor: pointer;
+	font-weight: bold;
+	transition: all 0.3s ease;
 }
 
 .back-btn:hover {
-  transform: translateX(-5px);
+	transform: translateX(-5px);
 }
 
 .quiz-progress {
-  text-align: right;
+	text-align: right;
 }
 
 .progress-text {
-  display: block;
-  margin-bottom: 5px;
-  color: #666;
-  font-size: 0.9em;
+	display: block;
+	margin-bottom: 5px;
+	color: #666;
+	font-size: 0.9em;
 }
 
 .progress-bar {
-  width: 150px;
-  height: 8px;
-  background: #e0e0e0;
-  border-radius: 10px;
-  overflow: hidden;
+	width: 150px;
+	height: 8px;
+	background: #e0e0e0;
+	border-radius: 10px;
+	overflow: hidden;
 }
 
 .progress-fill {
-  height: 100%;
-  background: linear-gradient(135deg, #4ECDC4, #44A08D);
-  transition: width 0.3s ease;
+	height: 100%;
+	background: linear-gradient(135deg, #4ECDC4, #44A08D);
+	transition: width 0.3s ease;
 }
 
 /* Loading container */
 .loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 400px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 400px;
 }
 
 .loading-bubble {
-  background: linear-gradient(135deg, #4ECDC4, #44A08D);
-  color: white;
-  padding: 40px;
-  border-radius: 25px;
-  text-align: center;
-  box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3);
+	background: linear-gradient(135deg, #4ECDC4, #44A08D);
+	color: white;
+	padding: 40px;
+	border-radius: 25px;
+	text-align: center;
+	box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3);
 }
 
 .loading-emoji {
-  font-size: 3em;
-  margin-bottom: 15px;
+	font-size: 3em;
+	margin-bottom: 15px;
 }
 
 .loading-bubble h3 {
-  margin: 0 0 10px 0;
-  font-size: 1.5em;
+	margin: 0 0 10px 0;
+	font-size: 1.5em;
 }
 
 .loading-bubble p {
-  margin: 0;
-  opacity: 0.9;
+	margin: 0;
+	opacity: 0.9;
 }
 
 .question-bubble {
-  background: linear-gradient(135deg, #4ECDC4, #44A08D);
-  color: white;
-  padding: 30px;
-  border-radius: 25px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  margin-bottom: 30px;
-  box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3);
+	background: linear-gradient(135deg, #4ECDC4, #44A08D);
+	color: white;
+	padding: 30px;
+	border-radius: 25px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	margin-bottom: 30px;
+	box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3);
 }
 
 .question-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 15px;
-  margin-bottom: 0;
-  width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 15px;
+	margin-bottom: 0;
+	width: 100%;
 }
 
 .question-emoji {
-  font-size: 3em;
-  margin-bottom: 15px;
+	font-size: 3em;
+	margin-bottom: 15px;
 }
 
 .question-bubble h2 {
-  margin: 0 0 15px 0;
-  font-size: 1.5em;
+	margin: 0 0 15px 0;
+	font-size: 1.5em;
 }
 
 .question-hint {
-  background: rgba(255,255,255,0.2);
-  padding: 10px 15px;
-  border-radius: 15px;
-  font-size: 0.9em;
-  margin-top: 15px;
+	background: rgba(255,255,255,0.2);
+	padding: 10px 15px;
+	border-radius: 15px;
+	font-size: 0.9em;
+	margin-top: 15px;
 }
 
 .options-container {
-  display: grid;
-  gap: 15px;
-  margin-bottom: 30px;
+	display: grid;
+	gap: 15px;
+	margin-bottom: 30px;
 }
 
 .option-btn {
-  background: white;
-  border: 3px solid #E2E8F0;
-  padding: 20px;
-  border-radius: 15px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  transition: all 0.3s ease;
-  font-size: 1.1em;
-  font-weight: bold;
-  position: relative;
+	background: white;
+	border: 3px solid #E2E8F0;
+	padding: 20px;
+	border-radius: 15px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 15px;
+	transition: all 0.3s ease;
+	font-size: 1.1em;
+	font-weight: bold;
+	position: relative;
 }
 
 .option-btn:hover:not(:disabled),
 .option-btn.focused {
-  transform: translateY(-3px);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-  border-color: #4ECDC4;
+	transform: translateY(-3px);
+	box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+	border-color: #4ECDC4;
 }
 
 .option-btn.correct {
-  border-color: #4ECDC4;
-  background: #4ECDC4;
-  color: white;
+	border-color: #4ECDC4;
+	background: #4ECDC4;
+	color: white;
 }
 
 .option-btn.incorrect {
-  border-color: #FF6B6B;
-  background: #FF6B6B;
-  color: white;
+	border-color: #FF6B6B;
+	background: #FF6B6B;
+	color: white;
 }
 
 .option-btn:disabled {
-  cursor: not-allowed;
+	cursor: not-allowed;
 }
 
 .option-emoji {
-  font-size: 1.2em;
+	font-size: 1.2em;
 }
 
 .option-audio-btn {
-  background: rgba(0, 0, 0, 0.1);
-  border: none;
-  border-radius: 50%;
-  width: 35px;
-  height: 35px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 0.9em;
-  margin-left: auto;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
+	background: rgba(0, 0, 0, 0.1);
+	border: none;
+	border-radius: 50%;
+	width: 35px;
+	height: 35px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	font-size: 0.9em;
+	margin-left: auto;
+	transition: all 0.3s ease;
+	flex-shrink: 0;
 }
 
 .option-audio-btn:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.2);
-  transform: scale(1.1);
+	background: rgba(0, 0, 0, 0.2);
+	transform: scale(1.1);
 }
 
 .option-audio-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
+	cursor: not-allowed;
+	opacity: 0.6;
 }
 
 .feedback-bubble {
-  padding: 25px;
-  border-radius: 20px;
-  text-align: center;
-  animation: slideUp 0.5s ease-out;
+	padding: 25px;
+	border-radius: 20px;
+	text-align: center;
+	animation: slideUp 0.5s ease-out;
 }
 
 .feedback-bubble.correct {
-  background: linear-gradient(135deg, #4ECDC4, #44A08D);
-  color: white;
+	background: linear-gradient(135deg, #4ECDC4, #44A08D);
+	color: white;
 }
 
 .feedback-bubble.incorrect {
-  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
-  color: white;
+	background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+	color: white;
 }
 
 .feedback-emoji {
-  font-size: 3em;
-  margin-bottom: 15px;
+	font-size: 3em;
+	margin-bottom: 15px;
 }
 
 .feedback-text {
-  font-size: 1.2em;
-  margin-bottom: 20px;
+	font-size: 1.2em;
+	margin-bottom: 20px;
 }
 
 .feedback-actions {
-  display: flex;
-  gap: 15px;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
+	display: flex;
+	gap: 15px;
+	justify-content: center;
+	align-items: center;
+	flex-wrap: wrap;
 }
 
 .audio-hint-btn {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid white;
-  border-radius: 20px;
-  padding: 10px 20px;
-  color: white;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 0.9em;
-  min-width: 140px;
+	background: rgba(255, 255, 255, 0.2);
+	border: 1px solid white;
+	border-radius: 20px;
+	padding: 10px 20px;
+	color: white;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	font-size: 0.9em;
+	min-width: 140px;
 }
 
 .audio-hint-btn:hover:not(:disabled),
 .audio-hint-btn.focused {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
-  border-width: 2px;
+	background: rgba(255, 255, 255, 0.3);
+	transform: scale(1.05);
+	border-width: 2px;
 }
 
 .audio-hint-btn.pulse {
-  animation: pulse 1s infinite;
+    animation: pulse 1s infinite;
 }
 
 .audio-hint-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
+	cursor: not-allowed;
+	opacity: 0.6;
 }
 
 .next-btn {
-  background: white;
-  color: #333;
-  border: none;
-  padding: 12px 25px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 1em;
-  transition: all 0.3s ease;
+	background: white;
+	color: #4ECDC4; /* Ändrad färg för Next-knappen för att matcha quiz-temat */
+	border: none;
+	border-radius: 20px;
+	padding: 12px 25px;
+	cursor: pointer;
+	font-weight: bold;
+	transition: all 0.3s ease;
+	font-size: 1em;
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+	min-width: 140px;
 }
 
 .next-btn:hover,
 .next-btn.focused {
-  transform: scale(1.05);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+	transform: scale(1.05);
+	box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
 }
 
 .next-btn.pulse {
-  animation: pulse 1s infinite;
+	animation: pulse 1s infinite;
 }
 
+/*
+================================
+✅ NY STANDARDISERAD RESULTAT CSS
+(Ersätter gammal/saknad resultat-styling)
+================================
+*/
 /* === RESULT SECTION (QUIZ FINISHED) === */
 .results-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 400px;
-  margin-top: 20px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 400px;
+	margin-top: 20px;
 }
 
 .results-bubble {
-  color: white;
-  padding: 50px 40px;
-  border-radius: 30px;
-  text-align: center;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  max-width: 450px;
-  width: 100%;
+	color: white;
+	padding: 50px 40px;
+	border-radius: 30px;
+	text-align: center;
+	box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+	max-width: 500px; /* Bredd justerad */
+	width: 90%;
+	animation: fadeInUp 0.7s ease-out; /* NY ANIMATION */
 }
 
 .results-bubble.excellent {
-  background: linear-gradient(135deg, #38C77F, #2ECC71); /* Grön/mint */
+	background: linear-gradient(135deg, #6FE7DD, #349D9E);
 }
 
 .results-bubble.good {
-  background: linear-gradient(135deg, #FFC35C, #FFA000); /* Gul/Orange */
+	background: linear-gradient(135deg, #FFB88C, #FF6B6B);
 }
 
 .results-bubble.ok {
-  background: linear-gradient(135deg, #FF7B7B, #FF4F4F); /* Röd/Rosa */
+	background: linear-gradient(135deg, #FFD1B3, #FF9A8B);
 }
 
 .results-emoji {
-  font-size: 4em;
-  margin-bottom: 15px;
+	font-size: 3.5em; /* Justerad storlek */
+	margin-bottom: 15px;
 }
 
-.results-title {
-  font-size: 2em;
-  margin: 0 0 10px 0;
+.results-bubble h2 {
+	font-size: 2em;
+	margin-bottom: 10px;
+	font-weight: bold;
 }
 
 .results-score {
-  font-size: 1.5em;
-  font-weight: bold;
-  margin-bottom: 10px;
+	font-weight: bold;
+	font-size: 1.3em; /* Justerad storlek */
+	margin-bottom: 10px;
 }
 
 .results-message {
-  font-size: 1em;
-  margin-bottom: 30px;
+	font-size: 1.1em;
+	opacity: 0.95;
+	margin-bottom: 30px;
 }
 
 .results-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+	display: flex;
+	justify-content: center;
+	gap: 15px;
+	flex-wrap: wrap; /* Låter knapparna svepa vid mindre skärmar */
 }
 
 .action-btn {
-  background: white;
-  color: #333;
-  border: none;
-  padding: 12px 25px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 1em;
-  transition: all 0.3s ease;
+	border: none;
+	padding: 12px 25px;
+	border-radius: 25px;
+	cursor: pointer;
+	font-weight: bold;
+	color: white;
+	transition: all 0.3s ease;
+	font-size: 1em;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	min-width: 150px; /* Sätter minsta bredd */
 }
 
 .action-btn:hover {
-  transform: scale(1.03);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+	transform: scale(1.05);
+	box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
 }
 
 .play-again-btn {
-  background: #4ECDC4;
-  color: white;
+	background: linear-gradient(135deg, #A8E6CF, #4ECDC4);
+	color: white;
+	border: none;
+	box-shadow: 0 4px 10px rgba(78, 205, 196, 0.4);
 }
 
-.play-again-btn:hover {
-  background: #38a79d;
+.results-btn {
+	background: linear-gradient(135deg, #B9F5D2, #6F86D6); /* Ny färg för resultatknappen */
+	color: white;
 }
+
+.dashboard-btn {
+	background: linear-gradient(135deg, #FFB88C, #FF6B6B);
+	color: white;
+}
+
 
 /* === RESULTS MODE (HISTORY) === */
 .results-page {
-  padding: 20px;
-  background-color: #ffffff; 
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+	padding: 30px; /* Ökad padding */
+	background-color: #ffffff;
+	border-radius: 15px; /* Rundare hörn */
+	box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1); /* Tydligare skugga */
 }
 
 .results-page .results-title {
-  color: #4ECDC4;
-  text-align: center;
-  margin-bottom: 10px;
-  font-size: 2em;
+	color: #4ECDC4;
+	text-align: center;
+	margin-bottom: 15px;
+	font-size: 2.2em; /* Större titel */
 }
 
 .results-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
+	width: 100%;
+	border-collapse: separate; /* Ändrad till separate för rounded corners */
+	border-spacing: 0;
+	margin-top: 25px;
+	overflow: hidden; /* För att dölja hörn på tabell */
+	border-radius: 10px; /* Rundar tabellens hörn */
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .results-table th, .results-table td {
-  border: 1px solid #e0e0e0;
-  padding: 12px;
-  text-align: left;
+	border-top: 1px solid #e9e9e9;
+	padding: 15px 12px;
+	text-align: left;
 }
 
 .results-table thead th {
-  background-color: #4ECDC4;
-  color: white;
-  font-weight: bold;
+	background-color: #4ECDC4;
+	color: white;
+	font-weight: bold;
+	border-bottom: 2px solid #349D9E;
 }
+/* Rundade hörn för thead */
+.results-table thead tr:first-child th:first-child { border-top-left-radius: 10px; }
+.results-table thead tr:first-child th:last-child { border-top-right-radius: 10px; }
+
 
 .results-table tbody tr:nth-child(even) {
-  background-color: #f7f7f7;
+	background-color: #fcfcfc;
 }
 
 .results-table tbody tr:hover {
-  background-color: #e6f7ff;
+	background-color: #e6f7ff;
+	transition: background-color 0.2s;
 }
 
 .no-results {
-  text-align: center;
-  color: #999;
-  font-style: italic;
-  padding: 30px;
-  border: 1px dashed #e0e0e0;
-  border-radius: 10px;
-  margin-top: 20px;
+	text-align: center;
+	color: #999;
+	font-style: italic;
+	padding: 40px;
+	border: 2px dashed #e0e0e0;
+	border-radius: 15px;
+	margin-top: 25px;
 }
 
 .back-from-results-btn {
-    margin-top: 30px;
-    background: linear-gradient(135deg, #FFC35C, #FFA000);
-    color: white;
+	margin-top: 30px;
+	background: linear-gradient(135deg, #4ECDC4, #44A08D);
+	color: white;
+	padding: 12px 25px;
+	border-radius: 25px;
+	font-weight: bold;
+	cursor: pointer;
+	border: none;
+	transition: all 0.3s ease;
 }
 
+.back-from-results-btn:hover {
+	transform: scale(1.05);
+	box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+}
+
+
 /* Keyframes */
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes fadeInUp {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 @keyframes pulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(78, 205, 196, 0.4);
-  }
-  70% {
-    transform: scale(1.05);
-    box-shadow: 0 0 0 10px rgba(78, 205, 196, 0);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(78, 205, 196, 0);
-  }
-}
-
-.audio-hint-btn.pulse {
-    animation: pulse 1s infinite;
-}
-
-.next-btn.pulse {
-    animation: pulse 1s infinite;
+	0% {
+		box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+	}
+	70% {
+		box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+	}
 }
 </style>
