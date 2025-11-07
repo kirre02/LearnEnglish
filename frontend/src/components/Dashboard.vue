@@ -18,7 +18,8 @@
         <UserInfoBubble
           :learnedWords="learnedWords"
           @logout="handleLogout"
-          @show-profile="goToProfile" />
+          @show-profile="goToProfile" 
+          class="user-info-bubble-position"/> 
 
       </div>
     </div>
@@ -151,10 +152,10 @@
 
 <script>
 import QuizResultatMini from "@/components/QuizResults.vue"; 
-import UserInfoBubble from './UserInfoBubble.vue'; // LÄGG TILL DENNA
+import UserInfoBubble from './UserInfoBubble.vue';
 
 export default {
-  components: { QuizResultatMini, UserInfoBubble }, // REGISTRERAR BÅDA
+  components: { QuizResultatMini, UserInfoBubble },
   name: 'Dashboard',
   data() {
     return {
@@ -286,7 +287,7 @@ export default {
       this.$router.push('/practice/quiz');
     },
 
-    handleLogout() { // BEHÅLLS för UserInfoBubble-komponenten
+    handleLogout() { 
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       localStorage.removeItem('learningProgress');
@@ -295,7 +296,7 @@ export default {
       this.$router.push('/');
     },
 
-    goToProfile() { // BEHÅLLS för UserInfoBubble-komponenten
+    goToProfile() { 
       this.$router.push('/profile');
     },
 
@@ -348,7 +349,7 @@ export default {
   position: absolute;
   top: 20px;
   right: 20px;
-  z-index: 1;
+  z-index: 10; 
 }
 
 .balloon {
@@ -370,12 +371,14 @@ export default {
 .top-section {
   position: relative;
   margin-bottom: 30px;
+  z-index: 15; /* HÖGRE än ballongerna så bubblorna är framför */
 }
 
 .welcome-container {
   display: flex;
   gap: 20px;
   align-items: flex-start;
+  position: relative;
 }
 
 .welcome-bubble {
@@ -425,7 +428,14 @@ export default {
   50% { opacity: 1; transform: scale(1.1); }
 }
 
-/* NY: Quiz Modal Styles */
+/* NYTT: UserInfoBubble positionering */
+.user-info-bubble-position {
+    position: relative; 
+    z-index: 20;
+    align-self: flex-start;
+}
+
+/* NY: Quiz Modal Styles (BEHÅLLS) */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -580,7 +590,7 @@ export default {
   border-color: #dee2e6;
 }
 
-/* Framstegs-bubblor */
+/* Framstegs-bubblor (BEHÅLLS) */
 .progress-bubbles.three-columns {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -653,7 +663,7 @@ export default {
   color: #333;
 }
 
-/* Utforska-sektion */
+/* Utforska-sektion (BEHÅLLS) */
 .explore-section {
   background: rgba(255, 255, 255, 0.95);
   padding: 30px;
@@ -756,7 +766,7 @@ export default {
   50% { opacity: 1; transform: scale(1.2); }
 }
 
-/* Snabbåtgärder */
+/* Snabbåtgärder (BEHÅLLS) */
 .quick-actions {
   background: rgba(255, 255, 255, 0.95);
   padding: 25px;
@@ -840,7 +850,7 @@ export default {
   box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
 }
 
-/* Uppmuntrande footer */
+/* Uppmuntrande footer (BEHÅLLS) */
 .encouragement-footer {
   text-align: center;
 }
@@ -873,7 +883,7 @@ export default {
   font-size: 0.9em;
 }
 
-/* Animationer */
+/* Animationer (BEHÅLLS) */
 @keyframes bounceIn {
   0% { transform: scale(0.3); opacity: 0; }
   50% { transform: scale(1.05); }
@@ -901,7 +911,9 @@ export default {
   100% { opacity: 1; }
 }
 
+/* ---------------------------------------------------- */
 /* Responsiv design */
+/* ---------------------------------------------------- */
 @media (max-width: 768px) {
   .welcome-container {
     flex-direction: column;
@@ -924,10 +936,6 @@ export default {
     text-align: center;
   }
   
-  .floating-balloons {
-    display: none;
-  }
-  
   .quiz-modal {
     width: 95%;
     margin: 20px;
@@ -946,5 +954,25 @@ export default {
   .results-btn {
     background: linear-gradient(135deg, #ff6a88, #ff99ac); 
   }
+}
+
+/* ---------------------------------------------------- */
+/* MEDIA QUERY - DESKTOP LAYOUT (min-width: 769px) */
+/* ---------------------------------------------------- */
+@media (min-width: 769px) {
+    /* UserInfoBubble: Absolut positionering och HÖGRE upp */
+    .user-info-bubble-position {
+        position: absolute; 
+        right: 0px; 
+        top: 90px; /* JUSTERAD FÖR ATT FLYTTA HÖGRE UPP */
+        flex-shrink: 0;
+    }
+
+    /* Welcome Bubble: Ge plats för den lilla bubblan så den inte överlappar texten */
+    .welcome-bubble {
+        flex: 2; 
+        /* Denna marginal förhindrar att texten i welcome-bubble går för långt åt höger */
+        margin-right: 180px; 
+    }
 }
 </style>
