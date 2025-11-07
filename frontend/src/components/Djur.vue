@@ -1,94 +1,149 @@
 <template>
-  <div class="djur-page-container" @keydown="handleKeydown" tabindex="0" ref="pageContainer">
+  <div class="djur-page-container" @keydown="handleKeydown" tabindex="0">
     <div class="djur-container">
-      <div class="djur-header">
-        <button @click="goBack" class="back-btn" ref="backButton">← Tillbaka</button>
+
+      <div class="djur-header" v-if="!isResultsMode">
+        <button @click="goBack" class="back-btn">← Tillbaka</button>
         <div class="quiz-progress">
           <span class="progress-text">Fråga {{ currentQuestionIndex + 1 }} av {{ questions.length }}</span>
           <div class="progress-bar">
             <div class="progress-fill" :style="progressBarStyle"></div>
           </div>
         </div>
+        <button @click="confirmCancelQuiz" class="cancel-quiz-btn">
+          🏠 Avbryt quiz
+        </button>
       </div>
 
-      <div v-if="!quizFinished" class="djur-content">
-        <div class="question-bubble">
-          <div class="question-header">
-            <div class="question-emoji">🐾</div>
-          </div>
-          <h2>{{ currentQuestion.question }}</h2>
-          <div class="question-hint" v-if="currentQuestion.hint">
-            💡 {{ currentQuestion.hint }}
+      <div v-if="!isResultsMode">
+
+        <div v-if="loading" class="loading-container">
+          <div class="loading-bubble">
+            <div class="loading-emoji">⏳</div>
+            <h3>Hämtar frågor...</h3>
+            <p>Var god vänta medan vi förbereder ditt quiz!</p>
           </div>
         </div>
 
-        <div class="options-container">
-          <button
-            v-for="(option, index) in currentQuestion.options"
-            :key="index"
-            @click="checkAnswer(option)"
-            :class="['option-btn', getOptionClass(option)]"
-            :disabled="answered"
-            :ref="el => { if (el) optionButtons[index] = el }"
-            :tabindex="answered ? -1 : 0"
-          >
-            <span class="option-emoji">{{ getOptionEmoji(index) }}</span>
-            <span class="option-text">{{ option }}</span>
+        <div v-else-if="!quizFinished && currentQuestion" class="djur-content">
+          <div class="question-bubble">
+            <div class="question-header">
+              <div class="question-emoji">🐾</div>
+            </div>
+            <h2>{{ currentQuestion.question }}</h2>
+            <div class="question-hint" v-if="currentQuestion.hint">
+              💡 {{ currentQuestion.hint }}
+            </div>
+          </div>
+
+          <div class="options-container">
             <button
-              v-if="shouldShowOptionAudio(option)"
-              @click.stop="playOptionAudio(option)"
-              class="option-audio-btn"
-              :disabled="audioLoading"
-              :aria-label="`Hör uttal av ${option}`"
-              :ref="el => { if (el) optionAudioButtons[index] = el }"
-              tabindex="-1"
+              v-for="(option, index) in currentQuestion.options"
+              :key="index"
+              @click="checkAnswer(option)"
+              :class="['option-btn', getOptionClass(option), { 'focused': focusedOptionIndex === index }]"
+              :disabled="answered"
+              ref="optionButtons"
             >
-              <span v-if="currentLoadingOption === option">⏳</span>
-              <span v-else>🔊</span>
-            </button>
-          </button>
-        </div>
+              <span class="option-emoji">{{ getOptionEmoji(index) }}</span>
+              <span class="option-text">{{ option }}</span>
 
-        <div v-if="answered" class="feedback-bubble" :class="feedbackClass">
-          <div class="feedback-emoji">{{ feedbackEmoji }}</div>
-          <div class="feedback-text">{{ feedbackText }}</div>
-          <button
-            v-if="!isAnswerCorrect"
-            @click="playCorrectAnswerAudio"
-            class="audio-hint-btn"
-            :disabled="audioLoading"
-            ref="audioHintButton"
-            tabindex="0"
-          >
-            <span v-if="audioLoading && currentLoadingOption === 'correct-answer'">⏳ Laddar...</span>
-            <span v-else>🔊 Hör rätt svar</span>
-          </button>
-          <button @click="nextQuestion" class="next-btn" ref="nextButton" tabindex="0">
-            {{ isLastQuestion ? 'Se resultat' : 'Nästa fråga' }} →
-          </button>
-        </div>
-      </div>
-
-      <div v-else class="results-container">
-        <div class="results-bubble" :class="resultsClass">
-          <div class="results-emoji">{{ resultsEmoji }}</div>
-          <h2>{{ resultsTitle }}</h2>
-          <p class="results-score">{{ score }} av {{ questions.length }} rätt!</p>
-          <p class="results-message">{{ resultsMessage }}</p>
-
-          <div class="results-actions">
-            <button @click="restartQuiz" class="action-btn play-again-btn" tabindex="0">
-              🎮 Spela igen
-            </button>
-            <button @click="goToAllResults" class="action-btn results-btn" tabindex="0">
-              📊 Se alla resultat
-            </button>
-            <button @click="goToDashboard" class="action-btn dashboard-btn" tabindex="0">
-              🏠 Till dashboard
+              <button
+                v-if="shouldShowOptionAudio(option)"
+                @click.stop="playOptionAudio(option)"
+                class="option-audio-btn"
+                :disabled="audioLoading"
+                :aria-label="`Hör uttal av ${option}`"
+              >
+                <span v-if="currentLoadingOption === option">⏳</span>
+                <span v-else>🔊</span>
+              </button>
             </button>
           </div>
+
+          <div v-if="answered" class="feedback-bubble" :class="feedbackClass" ref="feedbackSection">
+            <div class="feedback-emoji">{{ feedbackEmoji }}</div>
+            <div class="feedback-text">{{ feedbackText }}</div>
+            <div class="feedback-actions" ref="feedbackActions">
+              <button
+                v-if="!isAnswerCorrect"
+                @click="playCorrectAnswerAudio"
+                class="audio-hint-btn"
+                :disabled="audioLoading"
+                :class="{ 'focused': focusedAction === 'audio', 'pulse': shouldPulseAudioButton }"
+                ref="audioButton"
+              >
+                <span v-if="audioLoading && currentLoadingOption === 'correct-answer'">⏳ Laddar...</span>
+                <span v-else>🔊 Hör rätt svar</span>
+              </button>
+              <button
+                @click="nextQuestion"
+                class="next-btn"
+                :class="{ 'pulse': shouldPulseNextButton, 'focused': focusedAction === 'next' }"
+                ref="nextButton"
+              >
+                {{ isLastQuestion ? 'Se resultat' : 'Nästa fråga' }} →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else-if="quizFinished" class="results-container">
+          <div class="results-bubble" :class="resultsClass">
+            <div class="results-emoji">{{ resultsEmoji }}</div>
+            <h2>{{ resultsTitle }}</h2>
+            <p class="results-score">{{ score }} av {{ questions.length }} rätt!</p>
+            <p class="results-message">{{ resultsMessage }}</p>
+
+            <div class="results-actions">
+              <button @click="restartQuiz" class="action-btn play-again-btn">
+                🎮 Spela igen
+              </button>
+              <button @click="goToAllResults" class="action-btn results-btn">
+                📊 Se alla resultat
+              </button>
+              <button @click="goToDashboard" class="action-btn dashboard-btn">
+                🏠 Till dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div v-else class="loading-container">
+          <h3>Laddar...</h3>
         </div>
       </div>
+
+      <div v-else-if="isResultsMode" class="results-page">
+        <h2 class="results-title">🐾 Dina quizresultat - Djur</h2>
+        <h3 style="color:#555; margin-bottom:20px;">
+          Här ser du alla dina tidigare quizresultat 📊
+        </h3>
+
+        <table v-if="results.length" class="results-table">
+          <thead>
+            <tr>
+              <th>Datum</th>
+              <th>Poäng</th>
+              <th>Totalt</th>
+              <th>Procent</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(r, index) in results" :key="index">
+              <td>{{ new Date(r.created_at).toLocaleDateString('sv-SE') }}</td>
+              <td>{{ r.correct_answers }}</td>
+              <td>{{ r.correct_answers + r.wrong_answers }}</td>
+              <td>{{ Math.round((r.correct_answers / (r.correct_answers + r.wrong_answers)) * 100) }}%</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p v-else class="no-results">Inga quizresultat ännu. Gör ett quiz först 🐾</p>
+
+        <button @click="goBackFromResults" class="action-btn back-from-results-btn">⬅️ Tillbaka</button>
+      </div>
+
     </div>
   </div>
 </template>
@@ -107,17 +162,12 @@ export default {
     };
 
     const initialQuestions = [
-      // Standardfrågor (används som fallback)
       { question: "Vad betyder 'hund' på engelska?", options: shuffleArray(["dog", "cat", "bird", "fish"]), correctAnswer: "dog", hint: "Ett populärt husdjur som skäller", audioText: "dog" },
       { question: "Vad betyder 'katt' på engelska?", options: shuffleArray(["cat", "dog", "rabbit", "hamster"]), correctAnswer: "cat", hint: "Ett litet rovdjur som jagar möss", audioText: "cat" },
       { question: "Vad betyder 'fågel' på engelska?", options: shuffleArray(["bird", "fish", "butterfly", "bee"]), correctAnswer: "bird", hint: "Har vingar och kan flyga", audioText: "bird" },
       { question: "Vad betyder 'häst' på engelska?", options: shuffleArray(["horse", "cow", "pig", "sheep"]), correctAnswer: "horse", hint: "Ett stort djur som man kan rida på", audioText: "horse" },
       { question: "Vad betyder 'lejon' på engelska?", options: shuffleArray(["lion", "tiger", "elephant", "giraffe"]), correctAnswer: "lion", hint: "Kungen av djungeln", audioText: "lion" }
     ];
-
-    const preparedQuestions = initialQuestions.map(question => {
-      return { ...question, options: shuffleArray([...question.options]) };
-    });
 
     return {
       score: 0,
@@ -126,22 +176,25 @@ export default {
       selectedAnswer: null,
       quizFinished: false,
       progress: {},
-      questions: shuffleArray(preparedQuestions),
+      questions: [],
+      results: [], // <--- NY: För att lagra historiska resultat
+      loading: true,
       initialQuestions: initialQuestions,
       shuffleArray: shuffleArray,
 
-      // Data för ljud
+      // DATA FÖR LJUD
       audioLoading: false,
       currentLoadingOption: null,
       currentAudio: null,
       isSpeechSupported: 'speechSynthesis' in window,
-      
-      // Data för tangentbordsnavigation
-      focusedElementIndex: 0,
-      currentFocusArea: 'options', // 'options', 'feedback', 'results'
-      optionButtons: [],
-      optionAudioButtons: [],
-      navigationElements: []
+
+      // DATA FÖR ANVÄNDARVÄNLIGHET (från quiz-komponenten)
+      focusedOptionIndex: 0,
+      focusedAction: 'next',
+      shouldPulseNextButton: false,
+      pulseAudioButton: false,
+
+      isResultsMode: false // <--- NY: Kontrollerar resultatvyn
     }
   },
   computed: {
@@ -152,20 +205,17 @@ export default {
       return this.currentQuestionIndex === this.questions.length - 1;
     },
     progressBarStyle() {
-      const percentage = ((this.currentQuestionIndex + 1) / this.questions.length) * 100;
-      return { width: `${percentage}%` };
-    },
-    isAnswerCorrect() {
-      return this.selectedAnswer === this.currentQuestion.correctAnswer;
+      const progress = ((this.currentQuestionIndex + 1) / this.questions.length) * 100;
+      return { width: `${progress}%` };
     },
     feedbackClass() {
-      return this.isAnswerCorrect ? 'correct' : 'incorrect';
+      return this.selectedAnswer === this.currentQuestion.correctAnswer ? 'correct' : 'incorrect';
     },
     feedbackEmoji() {
-      return this.isAnswerCorrect ? '🎉' : '💡';
+      return this.selectedAnswer === this.currentQuestion.correctAnswer ? '🎉' : '💡';
     },
     feedbackText() {
-      return this.isAnswerCorrect
+      return this.selectedAnswer === this.currentQuestion.correctAnswer
         ? 'Rätt svar! Bra jobbat!'
         : `Rätt svar är: ${this.currentQuestion.correctAnswer}`;
     },
@@ -189,285 +239,277 @@ export default {
     },
     resultsMessage() {
       const percentage = (this.score / this.questions.length) * 100;
-      if (percentage >= 80) return 'Du kan alla djurord galant!';
+      if (percentage >= 80) return 'Du är en riktig djurexpert!';
       if (percentage >= 60) return 'Du kan många djurord!';
-      return 'Fortsätt öva på djurorden, du lär dig snabbt!';
+      return 'Fortsätt öva, du blir bättre!';
     },
+    isAnswerCorrect() {
+      return this.selectedAnswer === this.currentQuestion.correctAnswer;
+    },
+    shouldPulseNextButton() {
+      return this.answered && this.isAnswerCorrect;
+    },
+    shouldPulseAudioButton() {
+      return this.pulseAudioButton;
+    }
+  },
+  async mounted() {
+    this.$el.focus();
     
-    // Beräkna navigeringselement
-    feedbackElements() {
-      const elements = [];
-      if (!this.isAnswerCorrect && this.answered) {
-        elements.push('audioHint');
-      }
-      elements.push('nextButton');
-      return elements;
-    }
-  },
-  watch: {
-    currentQuestionIndex() {
-      this.$nextTick(() => {
-        this.initializeNavigation();
-      });
-    },
-    answered(newVal) {
-      this.$nextTick(() => {
-        if (newVal) {
-          this.switchToFeedbackNavigation();
+    // <--- UPPDATERAD LOGIK FÖR isResultsMode I MOUNTED --->
+    // Kolla om vi är i results-mode baserat på route
+    this.isResultsMode = this.$route.path.includes('/djur/results') || this.$route.query.showResults === 'true';
+    
+    try {
+      if (this.isResultsMode) {
+        console.log("📊 Laddar quizresultat...");
+        await this.loadPastResults();
+      } else {
+        console.log("🐾 Laddar djurfrågor...");
+        
+        if (this.$route.query.continue === 'true') {
+          this.loadSavedQuiz();
         } else {
-          this.switchToOptionsNavigation();
-        }
-      });
-    },
-    quizFinished(newVal) {
-      this.$nextTick(() => {
-        if (newVal) {
-          this.currentFocusArea = 'results';
-          this.focusOnFirstResultButton();
-        }
-      });
-    }
-  },
-  mounted() {
-    if (this.$route.query.showResults === 'true') {
-      const savedState = localStorage.getItem('lastQuizState');
-      if (savedState) {
-        try {
-          const quizState = JSON.parse(savedState);
-          this.quizFinished = true;
-          this.score = quizState.score;
-          localStorage.removeItem('lastQuizState');
-        } catch (e) {
-          console.error("Kunde inte tolka sparad quiz-state:", e);
+          await this.fetchQuizQuestions();
+          this.loadCurrentQuizState();
         }
       }
-      this.$router.replace({ query: {} });
+    } catch (err) {
+      console.error("Init error:", err);
+    } finally {
+      this.loading = false;
     }
-
+    // <--- SLUT UPPDATERAD LOGIK --->
+    
     if (!localStorage.getItem('token')) {
       this.$router.push('/');
     }
     this.loadProgress();
-    
+
     if (!this.isSpeechSupported) {
       console.log('Web Speech API är inte tillgängligt i denna webbläsare');
     }
-
-    this.fetchQuizQuestions().then(() => {
-      // Fokusera på containern för tangentbordsnavigation
-      this.$nextTick(() => {
-        if (this.$refs.pageContainer) {
-          this.$refs.pageContainer.focus();
-        }
-        // Kalla på scroll och navigation först när datan är redo
-        this.scrollToQuestion(); // <-- NYT: Scrolla upp till första frågan
-        this.initializeNavigation();
-      });
-    });
-  },    
+  },
+  
   methods: {
-    // NYA: Metoder för tangentbordsnavigation och fokus
-    initializeNavigation() {
-      this.focusedElementIndex = 0;
-      this.currentFocusArea = 'options';
-      this.optionButtons = [];
-      this.optionAudioButtons = [];
-      
+    // <--- UPPDATERADE METODER FÖR RESULTATHANTERING --->
+    goToAllResults() {
+      // Visa resultatsidan istället för att navigera
+      this.isResultsMode = true;
+      this.loadPastResults();
+    },
+
+    goBackFromResults() {
+      // Gå tillbaka till quiz-menyn eller dashboard
+      this.isResultsMode = false;
+      this.$router.push('/practice');
+    },
+
+    restartQuiz() {
+      const preparedQuestions = this.initialQuestions.map(question => {
+        return {
+          ...question,
+          options: this.shuffleArray([...question.options])
+        };
+      });
+
+      this.questions = this.shuffleArray(preparedQuestions);
+      this.score = 0;
+      this.currentQuestionIndex = 0;
+      this.answered = false;
+      this.selectedAnswer = null;
+      this.quizFinished = false;
+      this.focusedOptionIndex = 0;
+      this.focusedAction = 'next';
+      this.pulseAudioButton = false;
+      this.isResultsMode = false; // ✅ VIKTIGT: Återställ results-mode
+
+      localStorage.removeItem('currentQuizState');
+      localStorage.removeItem('savedQuizState');
+
       this.$nextTick(() => {
-        if (this.answered) {
-          this.focusOnFeedback();
-        } else {
-          this.focusOnFirstOption();
-        }
+        this.$el.focus();
       });
     },
 
-    focusOnFirstOption() {
-      if (this.optionButtons.length > 0 && this.optionButtons[0]) {
-        this.optionButtons[0].focus();
-        this.focusedElementIndex = 0;
-      }
-    },
-
-    focusOnFeedback() {
-      const elements = this.getFeedbackElements();
-      if (elements.length > 0) {
-        elements[0].focus();
-        this.focusedElementIndex = 0;
-        this.startBlinkingEffect(elements[0]);
-      }
-      this.currentFocusArea = 'feedback';
-    },
-
-    focusOnFirstResultButton() {
-      this.currentFocusArea = 'results';
-      this.focusedElementIndex = 0;
-      this.$nextTick(() => {
-        const resultsButtons = this.$el.querySelectorAll('.action-btn');
-        if (resultsButtons.length > 0) {
-          resultsButtons[0].focus();
-        }
-      });
-    },
-    
-    getFeedbackElements() {
-      const elements = [];
-      // Kontrollera om hint-knappen ska visas
-      if (!this.isAnswerCorrect && this.$refs.audioHintButton) {
-        elements.push(this.$refs.audioHintButton);
-      }
-      // Lägg alltid till Nästa-knappen
-      if (this.$refs.nextButton) {
-        elements.push(this.$refs.nextButton);
-      }
-      return elements;
-    },
-
-    startBlinkingEffect(element) {
-      if (!element) return;
-      if (element.classList.contains('blinking')) return;
-
-      element.classList.add('blinking');
-      setTimeout(() => {
-        element.classList.remove('blinking');
-      }, 2000); // Blinka i 2 sekunder
-    },
-
-    // UPPDATERAD: Hanterar nu ArrowUp/Down för vertikal, och ArrowLeft/Right för horisontell navigering
-    handleKeydown(event) {
-      // Hantera Enter/Space för aktivering (oavsett var fokus är)
-      if (event.key === 'Enter' || event.key === ' ') {
-        if (document.activeElement && 
-            (document.activeElement.tagName === 'BUTTON' || document.activeElement.tagName === 'A')) {
-          event.preventDefault();
-          document.activeElement.click();
-        } else if (this.currentFocusArea === 'options' && !this.answered) {
-            // Om fokus är på container, aktivera det fokuserade alternativet
-            this.activateFocusedElement();
-            event.preventDefault();
-        }
-        return;
-      }
-      
-      if (this.quizFinished) return;
-
-      // Hantera vertikal navigering (Endast för 'options')
-      if (this.currentFocusArea === 'options') {
-        if (event.key === 'ArrowDown') {
-          event.preventDefault();
-          this.navigateOptions(1);
-        } else if (event.key === 'ArrowUp') {
-          event.preventDefault();
-          this.navigateOptions(-1);
-        }
-      } 
-      // Hantera horisontell navigering (Endast för 'feedback')
-      else if (this.currentFocusArea === 'feedback') {
-        // Horisontell navigation mellan knappar
-        if (event.key === 'ArrowRight') {
-          event.preventDefault();
-          this.navigateFeedback(1);
-        } else if (event.key === 'ArrowLeft') {
-          event.preventDefault();
-          this.navigateFeedback(-1);
-        }
-        // Tillåt ArrowUp/Down att fungera som Left/Right om det bara finns 2 element (standard UX för snabbhet)
-        else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            event.preventDefault();
-            const direction = (event.key === 'ArrowDown') ? 1 : -1;
-            this.navigateFeedback(direction);
-        }
-      }
-    },
-
-    // ÅTGÄRDAD: Flyttar nu ETT steg åt gången vertikalt, med wrap-around
-    navigateOptions(direction) {
-      if (this.answered) return;
-      
-      const buttons = this.optionButtons.filter(b => b); 
-      if (buttons.length === 0) return;
-
-      const currentIndex = buttons.findIndex(b => b === document.activeElement);
-      // Använd currentIndex om vi är fokuserade, annars utgå från focusedElementIndex
-      let currentFocus = currentIndex !== -1 ? currentIndex : this.focusedElementIndex;
-      
-      let newIndex = currentFocus + direction;
-      
-      // Wrap-around logik
-      if (newIndex >= buttons.length) {
-        newIndex = 0; // Gå från sista till första
-      } else if (newIndex < 0) {
-        newIndex = buttons.length - 1; // Gå från första till sista
-      }
-      
-      if (buttons[newIndex]) {
-        buttons[newIndex].focus();
-        this.focusedElementIndex = newIndex;
-      }
-    },
-
-    // UPPDATERAD: Navigerar nu horisontellt i feedback-bubblan, ett steg åt gången
-    navigateFeedback(direction) {
-      if (!this.answered) return;
-      
-      const elements = this.getFeedbackElements();
-      if (elements.length === 0) return;
-      
-      const currentIndex = elements.findIndex(el => el === document.activeElement);
-      let currentFocus = currentIndex !== -1 ? currentIndex : this.focusedElementIndex;
-      
-      let newIndex = currentFocus + direction;
-
-      // Wrap-around logik
-      if (newIndex >= elements.length) {
-        newIndex = 0; 
-      } else if (newIndex < 0) {
-        newIndex = elements.length - 1; 
-      }
-      
-      const element = elements[newIndex];
-      if (element) {
-        element.focus();
-        this.focusedElementIndex = newIndex;
-      }
-    },
-
-    activateFocusedElement() {
-      if (this.answered) {
-        return; 
-      } else {
-        const buttons = this.optionButtons.filter(b => b);
-        let elementToClick = buttons[this.focusedElementIndex];
+    async loadPastResults() {
+      this.loading = true;
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        const userId = user?.id || 1;
         
-        if (elementToClick) {
-          const optionTextElement = elementToClick.querySelector('.option-text');
-          if (optionTextElement) {
-            const option = optionTextElement.innerText.trim();
-            this.checkAnswer(option);
+        console.log("🔍 Hämtar resultat för user_id:", userId);
+        
+        const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
+        
+        if (!response.ok) {
+          console.error("❌ API fel:", response.status);
+          throw new Error('Kunde inte hämta quizresultat');
+        }
+
+        const data = await response.json();
+        console.log("📊 Data från API:", data);
+        
+        this.results = data
+          .filter(r => {
+            const type = r.quiz_type ? r.quiz_type.toLowerCase() : '';
+            return type === 'djur';
+          })
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        console.log("✅ Filtrerade djurresultat:", this.results.length);
+      } catch (err) {
+        console.error("❌ Fel vid hämtning av quizresultat:", err);
+        this.results = [];
+      } finally {
+        this.loading = false;
+      }
+    },
+    // <--- SLUT UPPDATERADE METODER FÖR RESULTATHANTERING --->
+
+    // BEFINTLIGA METODER
+    handleKeydown(event) {
+      if (this.quizFinished || this.isResultsMode) return; 
+
+      if (!this.answered) {
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          this.focusedOptionIndex = (this.focusedOptionIndex - 1 + this.currentQuestion.options.length) % this.currentQuestion.options.length;
+          this.scrollToFocusedOption();
+        } else if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          this.focusedOptionIndex = (this.focusedOptionIndex + 1) % this.currentQuestion.options.length;
+          this.scrollToFocusedOption();
+        } else if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          this.checkAnswer(this.currentQuestion.options[this.focusedOptionIndex]);
+        }
+      } else {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          if (!this.isAnswerCorrect) {
+            this.focusedAction = 'audio';
+            this.focusCurrentAction();
+          }
+        } else if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          if (!this.isAnswerCorrect) {
+            this.focusedAction = 'next';
+            this.focusCurrentAction();
+          }
+        } else if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          if (this.focusedAction === 'next') {
+            this.nextQuestion();
+          } else if (this.focusedAction === 'audio') {
+            this.playCorrectAnswerAudio();
+          }
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          if (this.isAnswerCorrect) {
+            this.nextQuestion();
           }
         }
       }
     },
 
-    switchToFeedbackNavigation() {
-      this.currentFocusArea = 'feedback';
-      
+    scrollToFocusedOption() {
       this.$nextTick(() => {
-        this.focusOnFeedback();
+        if (this.$refs.optionButtons && this.$refs.optionButtons[this.focusedOptionIndex]) {
+          this.$refs.optionButtons[this.focusedOptionIndex].scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+        }
       });
     },
 
-    switchToOptionsNavigation() {
-      this.currentFocusArea = 'options';
-      this.focusedElementIndex = 0;
-      
+    focusCurrentAction() {
       this.$nextTick(() => {
-        this.focusOnFirstOption();
+        if (this.focusedAction === 'next' && this.$refs.nextButton) {
+          this.$refs.nextButton.focus();
+        } else if (this.focusedAction === 'audio' && this.$refs.audioButton) {
+          this.$refs.audioButton.focus();
+        }
       });
     },
 
-    // --- Befintliga metoder ---
+    confirmCancelQuiz() {
+      if (confirm('Vill du avbryta quizet? Ditt framsteg kommer att sparas så du kan fortsätta senare.')) {
+        this.cancelQuiz();
+      }
+    },
+
+    cancelQuiz() {
+      const quizState = {
+        score: this.score,
+        currentQuestionIndex: this.currentQuestionIndex,
+        answered: this.answered,
+        selectedAnswer: this.selectedAnswer,
+        questions: this.questions,
+        quizFinished: false,
+        timestamp: new Date().getTime()
+      };
+      localStorage.setItem('savedQuizState', JSON.stringify(quizState));
+      localStorage.removeItem('currentQuizState');
+      
+      this.$router.push('/dashboard');
+    },
+
+    loadSavedQuiz() {
+      const savedState = localStorage.getItem('savedQuizState');
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState);
+          this.score = state.score || 0;
+          this.currentQuestionIndex = state.currentQuestionIndex || 0;
+          this.answered = state.answered || false;
+          this.selectedAnswer = state.selectedAnswer || null;
+          this.questions = state.questions || this.questions;
+          this.quizFinished = state.quizFinished || false;
+          
+          console.log('Fortsätter sparad quiz från fråga:', this.currentQuestionIndex + 1);
+          localStorage.removeItem('savedQuizState');
+        } catch (e) {
+          console.error('Kunde inte ladda sparad quiz:', e);
+          this.loadCurrentQuizState();
+        }
+      } else {
+        this.loadCurrentQuizState();
+      }
+    },
+
+    saveCurrentQuizState() {
+      const quizState = {
+        score: this.score,
+        currentQuestionIndex: this.currentQuestionIndex,
+        answered: this.answered,
+        selectedAnswer: this.selectedAnswer,
+        questions: this.questions,
+        quizFinished: this.quizFinished
+      };
+      localStorage.setItem('currentQuizState', JSON.stringify(quizState));
+    },
+
+    loadCurrentQuizState() {
+      const savedState = localStorage.getItem('currentQuizState');
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState);
+          this.score = state.score || 0;
+          this.currentQuestionIndex = state.currentQuestionIndex || 0;
+          this.answered = state.answered || false;
+          this.selectedAnswer = state.selectedAnswer || null;
+          this.questions = state.questions || this.questions;
+          this.quizFinished = state.quizFinished || false;
+        } catch (e) {
+          console.error('Kunde inte ladda quiz state:', e);
+        }
+      }
+    },
+
     async fetchQuizQuestions() {
+      this.loading = true;
       try {
         const response = await fetch('http://localhost:9001/api/words/category/djur');
         
@@ -499,83 +541,126 @@ export default {
 
             this.questions = this.shuffleArray(dbQuestions);
             this.initialQuestions = dbQuestions;
+          } else {
+            this.useFallbackQuestions();
           }
         } else {
           console.error('Kunde inte hämta ord från databasen');
+          this.useFallbackQuestions();
         }
       } catch (error) {
         console.error('Fel vid hämtning av ord:', error);
+        this.useFallbackQuestions();
+      } finally {
+        this.loading = false;
       }
+    },
+
+    useFallbackQuestions() {
+      this.questions = this.shuffleArray([...this.initialQuestions]);
+      console.log('Använder fallback-frågor för djur');
     },
 
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
     },
+    
     getOptionClass(option) {
       if (!this.answered) return '';
-      
-      if (option === this.selectedAnswer) {
-        return option === this.currentQuestion.correctAnswer ? 'correct' : 'incorrect';
-      }
-      
-      if (option === this.currentQuestion.correctAnswer && this.answered) {
-        return 'correct';
-      }
-      
+      if (option === this.currentQuestion.correctAnswer) return 'correct';
+      if (option === this.selectedAnswer) return 'incorrect';
       return '';
     },
     
     checkAnswer(selectedAnswer) {
-      if (this.answered) return; 
+      if (this.answered) return;
 
       this.answered = true;
       this.selectedAnswer = selectedAnswer;
 
       if (selectedAnswer === this.currentQuestion.correctAnswer) {
         this.score++;
+        this.pulseAudioButton = false;
+      } else {
+        this.pulseAudioButton = true;
       }
-      
+
+      this.saveCurrentQuizState();
+
       this.$nextTick(() => {
-        this.switchToFeedbackNavigation();
+        if (this.$refs.feedbackSection) {
+          this.$refs.feedbackSection.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
+        }
+
+        if (this.isAnswerCorrect) {
+          this.focusedAction = 'next';
+          this.$nextTick(() => {
+            if (this.$refs.nextButton) {
+              this.$refs.nextButton.focus();
+            }
+          });
+        } else {
+          this.focusedAction = 'audio';
+          this.$nextTick(() => {
+            if (this.$refs.audioButton) {
+              this.$refs.audioButton.focus();
+            }
+          });
+        }
       });
     },
-    
-   nextQuestion() {
-            if (this.isLastQuestion) {
-                this.finishQuiz();
-            } else {
-                this.currentQuestionIndex++;
-                this.answered = false;
-                this.selectedAnswer = null;
 
-                // NY LOGIK: Scrolla upp och sätt fokus på första alternativet.
-                this.$nextTick(() => {
-                    this.scrollToQuestion();
-                    // initializeNavigation kommer anropas via 'watch' på currentQuestionIndex,
-                    // men vi kan kalla den direkt för snabbare fokus-sättning.
-                    this.initializeNavigation(); 
-                });
-            }
-        },
-        scrollToQuestion() {
-            // Försök hitta containern för frågan, eller bara scrolla till toppen av Djur-containern.
-            const questionContainer = this.$el.querySelector('.djur-content'); 
-            
-            if (questionContainer) {
-                // Använder 'smooth' för en mjukare övergång
-                questionContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            } else if (this.$refs.pageContainer) {
-                 // Fallback: Scrolla till toppen av hela quiz-sidan
-                 this.$refs.pageContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        },
+    nextQuestion() {
+      if (this.isLastQuestion) {
+        this.finishQuiz();
+      } else {
+        this.currentQuestionIndex++;
+        this.answered = false;
+        this.selectedAnswer = null;
+        this.focusedOptionIndex = 0;
+        this.focusedAction = 'next';
+        this.pulseAudioButton = false;
+        this.saveCurrentQuizState();
+
+        this.$nextTick(() => {
+          this.$el.focus();
+          this.focusedOptionIndex = 0;
+          this.scrollToFocusedOption();
+        });
+      }
+    },
+
+    goBack() {
+      // Denna metod används av knappen i headern, som bara visas när !isResultsMode
+      if (this.currentQuestionIndex > 0) {
+        this.currentQuestionIndex--;
+        this.answered = false;
+        this.selectedAnswer = null;
+        this.focusedOptionIndex = 0;
+        this.saveCurrentQuizState();
+        
+        this.$nextTick(() => {
+          this.$el.focus();
+          this.scrollToFocusedOption();
+        });
+      } else {
+        this.$router.push('/dashboard');
+      }
+    },
+    
     finishQuiz() {
       this.quizFinished = true;
       this.updateProgress();
       this.saveQuizResult();
       this.saveQuizStateForResults();
+      localStorage.removeItem('currentQuizState');
+      localStorage.removeItem('savedQuizState');
     },
+    
     saveQuizStateForResults() {
       const quizState = {
         score: this.score,
@@ -583,36 +668,42 @@ export default {
       };
       localStorage.setItem('lastQuizState', JSON.stringify(quizState));
     },
+
     async saveQuizResult() {
       try {
+        const user = JSON.parse(localStorage.getItem('user'));
         const resultData = {
-          userId: 1,
-          score: this.score,
-          total: this.questions.length,
-          category: 'djur'
+          userId: user?.id || 1,
+          correctAnswers: this.score,
+          wrongAnswers: this.questions.length - this.score,
+          quiz_type: "djur"
         };
 
-        const response = await fetch('http://localhost:9001/api/results', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(resultData)
+        console.log("💾 Skickar quizresultat:", resultData);
+
+        const response = await fetch("http://localhost:9001/api/quiz/quiz-results", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(resultData),
         });
 
         if (response.ok) {
-          console.log('Quiz result saved successfully!');
+          console.log("✅ Quizresultat sparat!");
         } else {
-          console.error('Failed to save quiz result');
+          console.error("❌ Misslyckades att spara quizresultat:", response.status);
         }
       } catch (error) {
-        console.error('Error saving quiz result:', error);
+        console.error("💥 Fel vid sparande av quizresultat:", error);
       }
     },
+
     updateProgress() {
       const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
       progress.completedQuizzes = (progress.completedQuizzes || 0) + 1;
       progress.learnedWords = Math.min(125, (progress.learnedWords || 0) + this.score * 2);
       localStorage.setItem('learningProgress', JSON.stringify(progress));
     },
+    
     loadProgress() {
       try {
         const progress = JSON.parse(localStorage.getItem('learningProgress') || '{}');
@@ -622,30 +713,9 @@ export default {
         this.progress = {};
       }
     },
-    restartQuiz() {
-      this.fetchQuizQuestions().then(() => {
-        this.score = 0;
-        this.currentQuestionIndex = 0;
-        this.answered = false;
-        this.selectedAnswer = null;
-        this.quizFinished = false;
-        this.$nextTick(() => {
-          this.initializeNavigation();
-        });
-      });
-    },
-    goBack() {
-      if (window.history.length > 1) {
-        this.$router.back();
-      } else {
-        this.$router.push('/dashboard');
-      }
-    },
+    
     goToDashboard() {
       this.$router.push('/dashboard');
-    },
-    goToAllResults() {
-      this.$router.push({ path: '/results', query: { showResults: 'true' } });
     },
 
     // Ljudmetoder
@@ -654,11 +724,20 @@ export default {
       await this.playAudio(option);
       this.currentLoadingOption = null;
     },
+
     async playCorrectAnswerAudio() {
       this.currentLoadingOption = 'correct-answer';
       await this.playAudio(this.currentQuestion.correctAnswer);
       this.currentLoadingOption = null;
+
+      this.$nextTick(() => {
+        this.focusedAction = 'next';
+        if (this.$refs.nextButton) {
+          this.$refs.nextButton.focus();
+        }
+      });
     },
+
     async playAudio(text) {
       if (!this.isSpeechSupported) {
         console.warn('Web Speech API stöds inte i denna webbläsare');
@@ -699,126 +778,532 @@ export default {
         this.showAudioError();
       }
     },
+
     showBrowserSupportMessage() {
       alert('Ljudstöd är för närvarande inte tillgängligt i din webbläsare. Vi rekommenderar Chrome eller Edge för bästa upplevelse.');
     },
+
     showAudioError() {
       console.warn('Kunde inte spela upp ljudet. Kontrollera din ljudinställningar.');
     },
+
     shouldShowOptionAudio() {
       return this.isSpeechSupported;
-    },
+    }
+  },
+  
+  watch: {
+    '$route'(to) {
+      // Vaktar vid intern navigering till resultatvyn
+      if (to.path.includes('/djur/results')) {
+        console.log("📡 Route changed → reload djur results");
+        this.isResultsMode = true;
+        this.loadPastResults();
+      } else if (this.isResultsMode) {
+        // Återställer om vi navigerar bort från resultatvyn
+        this.isResultsMode = false;
+      }
+    }
   },
 
   beforeUnmount() {
     if (this.isSpeechSupported) {
       speechSynthesis.cancel();
     }
+    if (!this.quizFinished && !localStorage.getItem('savedQuizState') && !this.isResultsMode) { 
+      this.saveCurrentQuizState();
+    }
   }
 }
 </script>
 
 <style scoped>
-/* Befintlig CSS */
+/* NY CSS FÖR AVBRYT KNAPPEN */
+.cancel-quiz-btn {
+  background: linear-gradient(135deg, #FF6B6B, #FF5252);
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.cancel-quiz-btn:hover {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, #FF5252, #FF0000);
+}
+
+/* UPPDATERAD DJUR-HEADER FÖR AVSTÅND */
+.djur-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  gap: 15px;
+}
+
+/* BEFINTLIG CSS MED UPPDATERINGAR */
 .djur-page-container {
   min-height: 100vh;
   background-color: #f7f3ed;
   padding: 20px;
   font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+  outline: none;
 }
-.djur-container { max-width: 600px; margin: 0 auto; }
-.djur-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-.back-btn { background: linear-gradient(135deg, #4ECDC4, #44A08D); color: white; border: none; padding: 10px 15px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: all 0.3s ease; }
-.back-btn:hover { transform: translateX(-5px); }
-.quiz-progress { text-align: right; }
-.progress-text { display: block; margin-bottom: 5px; color: #666; font-size: 0.9em; }
-.progress-bar { width: 150px; height: 8px; background: #e0e0e0; border-radius: 10px; overflow: hidden; }
-.progress-fill { height: 100%; background: linear-gradient(135deg, #4ECDC4, #44A08D); transition: width 0.3s ease; }
-.question-bubble { background: linear-gradient(135deg, #4ECDC4, #44A08D); color: white; padding: 30px; border-radius: 25px; display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 30px; box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3); }
-.question-header { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 0; width: 100%; }
-.question-emoji { font-size: 3em; margin-bottom: 15px; }
-.question-bubble h2 { margin: 0 0 15px 0; font-size: 1.5em; }
-.question-hint { background: rgba(255,255,255,0.2); padding: 10px 15px; border-radius: 15px; font-size: 0.9em; margin-top: 15px; }
-.options-container { display: grid; gap: 15px; margin-bottom: 30px; }
-.option-btn { background: white; border: 3px solid #E2E8F0; padding: 20px; border-radius: 15px; cursor: pointer; display: flex; align-items: center; gap: 15px; transition: all 0.3s ease; font-size: 1.1em; font-weight: bold; position: relative; }
-.option-btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-color: #4ECDC4; }
-.option-btn.correct { border-color: #4ECDC4; background: #4ECDC4; color: white; transform: scale(1.02); }
-.option-btn.incorrect { border-color: #FF6B6B; background: #FF6B6B; color: white; transform: scale(1.02); }
-.option-btn:disabled { cursor: not-allowed; opacity: 0.8; }
-.option-emoji { font-size: 1.2em; }
-.option-audio-btn { background: rgba(0, 0, 0, 0.1); border: none; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9em; margin-left: auto; transition: all 0.3s ease; flex-shrink: 0; }
-.option-audio-btn:hover:not(:disabled) { background: rgba(0, 0, 0, 0.2); transform: scale(1.1); }
-.option-audio-btn:disabled { cursor: not-allowed; opacity: 0.6; }
-.feedback-bubble { padding: 25px; border-radius: 20px; text-align: center; animation: slideUp 0.5s ease-out; }
-.feedback-bubble.correct { background: linear-gradient(135deg, #4ECDC4, #44A08D); color: white; }
-.feedback-bubble.incorrect { background: linear-gradient(135deg, #FF9A8B, #FF6A88); color: white; }
-.feedback-emoji { font-size: 3em; margin-bottom: 15px; }
-.feedback-text { font-size: 1.2em; margin-bottom: 20px; }
-.audio-hint-btn { background: rgba(255, 255, 255, 0.2); border: 1px solid white; border-radius: 20px; padding: 10px 20px; color: white; cursor: pointer; margin-bottom: 15px; transition: all 0.3s ease; font-size: 0.9em; min-width: 140px; }
-.audio-hint-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); }
-.audio-hint-btn:disabled { cursor: not-allowed; opacity: 0.6; }
-.next-btn { background: white; color: #333; border: none; padding: 12px 25px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 1em; transition: all 0.3s ease; }
-.next-btn:hover { transform: scale(1.05); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
-.results-container { text-align: center; }
-.results-bubble { padding: 40px; border-radius: 25px; text-align: center; color: white; animation: bounceIn 0.8s ease-out; }
-.results-bubble.excellent { background: linear-gradient(135deg, #4ECDC4, #44A08D); }
-.results-bubble.good { background: linear-gradient(135deg, #FF9A8B, #FF6A88); }
-.results-bubble.ok { background: linear-gradient(135deg, #FF6B6B, #FF8E53); }
-.results-emoji { font-size: 4em; margin-bottom: 20px; }
-.results-bubble h2 { margin: 0 0 15px 0; font-size: 2em; }
-.results-score { font-size: 1.5em; margin: 0 0 15px 0; font-weight: bold; }
-.results-message { font-size: 1.1em; margin: 0 0 30px 0; opacity: 0.9; }
-.results-actions { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
-.action-btn { border: none; padding: 15px 25px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 1em; transition: all 0.3s ease; color: white; }
-.play-again-btn { background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); }
-.results-btn { background: rgba(102, 126, 234, 0.8); backdrop-filter: blur(10px); }
-.dashboard-btn { background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); }
-.action-btn:hover { transform: scale(1.05); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 
-/* Blink-effekt för fokuserade element */
-.blinking {
-  animation: blink 0.6s ease-in-out 3;
+.djur-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.back-btn {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  transform: translateX(-5px);
+}
+
+.quiz-progress {
+  text-align: right;
+}
+
+.progress-text {
+  display: block;
+  margin-bottom: 5px;
+  color: #666;
+  font-size: 0.9em;
+}
+
+.progress-bar {
+  width: 150px;
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  transition: width 0.3s ease;
+}
+
+/* Loading container */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.loading-bubble {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  color: white;
+  padding: 40px;
+  border-radius: 25px;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3);
+}
+
+.loading-emoji {
+  font-size: 3em;
+  margin-bottom: 15px;
+}
+
+.loading-bubble h3 {
+  margin: 0 0 10px 0;
+  font-size: 1.5em;
+}
+
+.loading-bubble p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+.question-bubble {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  color: white;
+  padding: 30px;
+  border-radius: 25px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 30px;
+  box-shadow: 0 10px 25px rgba(78, 205, 196, 0.3);
+}
+
+.question-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.question-emoji {
+  font-size: 3em;
+  margin-bottom: 15px;
+}
+
+.question-bubble h2 {
+  margin: 0 0 15px 0;
+  font-size: 1.5em;
+}
+
+.question-hint {
+  background: rgba(255,255,255,0.2);
+  padding: 10px 15px;
+  border-radius: 15px;
+  font-size: 0.9em;
+  margin-top: 15px;
+}
+
+.options-container {
+  display: grid;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.option-btn {
+  background: white;
+  border: 3px solid #E2E8F0;
+  padding: 20px;
+  border-radius: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  transition: all 0.3s ease;
+  font-size: 1.1em;
+  font-weight: bold;
+  position: relative;
+}
+
+.option-btn:hover:not(:disabled),
+.option-btn.focused {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  border-color: #4ECDC4;
+}
+
+.option-btn.correct {
+  border-color: #4ECDC4;
+  background: #4ECDC4;
+  color: white;
+}
+
+.option-btn.incorrect {
+  border-color: #FF6B6B;
+  background: #FF6B6B;
+  color: white;
+}
+
+.option-btn:disabled {
+  cursor: not-allowed;
+}
+
+.option-emoji {
+  font-size: 1.2em;
+}
+
+.option-audio-btn {
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.9em;
+  margin-left: auto;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.option-audio-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.2);
+  transform: scale(1.1);
+}
+
+.option-audio-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.feedback-bubble {
+  padding: 25px;
+  border-radius: 20px;
+  text-align: center;
+  animation: slideUp 0.5s ease-out;
+}
+
+.feedback-bubble.correct {
+  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  color: white;
+}
+
+.feedback-bubble.incorrect {
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
+  color: white;
+}
+
+.feedback-emoji {
+  font-size: 3em;
+  margin-bottom: 15px;
+}
+
+.feedback-text {
+  font-size: 1.2em;
+  margin-bottom: 20px;
+}
+
+.feedback-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.audio-hint-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid white;
+  border-radius: 20px;
+  padding: 10px 20px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9em;
+  min-width: 140px;
+}
+
+.audio-hint-btn:hover:not(:disabled),
+.audio-hint-btn.focused {
+  background: rgba(255, 255, 255, 0.3);
   transform: scale(1.05);
-  box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.5);
+  border-width: 2px;
 }
 
-@keyframes blink {
-  0%, 100% { 
+.audio-hint-btn.pulse {
+  animation: pulse 1s infinite;
+}
+
+.audio-hint-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.next-btn {
+  background: white;
+  color: #333;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1em;
+  transition: all 0.3s ease;
+}
+
+.next-btn:hover,
+.next-btn.focused {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.next-btn.pulse {
+  animation: pulse 1s infinite;
+}
+
+/* === RESULT SECTION (QUIZ FINISHED) === */
+.results-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  margin-top: 20px;
+}
+
+.results-bubble {
+  color: white;
+  padding: 50px 40px;
+  border-radius: 30px;
+  text-align: center;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  max-width: 450px;
+  width: 100%;
+}
+
+.results-bubble.excellent {
+  background: linear-gradient(135deg, #38C77F, #2ECC71); /* Grön/mint */
+}
+
+.results-bubble.good {
+  background: linear-gradient(135deg, #FFC35C, #FFA000); /* Gul/Orange */
+}
+
+.results-bubble.ok {
+  background: linear-gradient(135deg, #FF7B7B, #FF4F4F); /* Röd/Rosa */
+}
+
+.results-emoji {
+  font-size: 4em;
+  margin-bottom: 15px;
+}
+
+.results-title {
+  font-size: 2em;
+  margin: 0 0 10px 0;
+}
+
+.results-score {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.results-message {
+  font-size: 1em;
+  margin-bottom: 30px;
+}
+
+.results-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.action-btn {
+  background: white;
+  color: #333;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1em;
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.play-again-btn {
+  background: #4ECDC4;
+  color: white;
+}
+
+.play-again-btn:hover {
+  background: #38a79d;
+}
+
+/* === RESULTS MODE (HISTORY) === */
+.results-page {
+  padding: 20px;
+  background-color: #ffffff; 
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.results-page .results-title {
+  color: #4ECDC4;
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 2em;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.results-table th, .results-table td {
+  border: 1px solid #e0e0e0;
+  padding: 12px;
+  text-align: left;
+}
+
+.results-table thead th {
+  background-color: #4ECDC4;
+  color: white;
+  font-weight: bold;
+}
+
+.results-table tbody tr:nth-child(even) {
+  background-color: #f7f7f7;
+}
+
+.results-table tbody tr:hover {
+  background-color: #e6f7ff;
+}
+
+.no-results {
+  text-align: center;
+  color: #999;
+  font-style: italic;
+  padding: 30px;
+  border: 1px dashed #e0e0e0;
+  border-radius: 10px;
+  margin-top: 20px;
+}
+
+.back-from-results-btn {
+    margin-top: 30px;
+    background: linear-gradient(135deg, #FFC35C, #FFA000);
+    color: white;
+}
+
+/* Keyframes */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(78, 205, 196, 0.4);
+  }
+  70% {
     transform: scale(1.05);
-    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.5);
+    box-shadow: 0 0 0 10px rgba(78, 205, 196, 0);
   }
-  50% { 
-    transform: scale(1.08);
-    box-shadow: 0 0 0 5px rgba(78, 205, 196, 0.8);
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(78, 205, 196, 0);
   }
 }
 
-/* Förbättra fokus-stilar */
-.option-btn:focus,
-.audio-hint-btn:focus,
-.next-btn:focus,
-.action-btn:focus,
-.back-btn:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.5);
-  transform: scale(1.02);
+.audio-hint-btn.pulse {
+    animation: pulse 1s infinite;
 }
 
-/* Se till att page container kan ta fokus */
-.djur-page-container:focus {
-  outline: none;
-}
-
-/* Övriga animationer och media queries */
-@keyframes slideUp { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
-@keyframes bounceIn { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.05); } 70% { transform: scale(0.9); } 100% { transform: scale(1); opacity: 1; } }
-
-@media (max-width: 768px) {
-  .djur-header { flex-direction: column; gap: 15px; }
-  .quiz-progress { text-align: center; }
-  .results-actions { flex-direction: column; }
-  .action-btn { width: 100%; }
-  .option-btn { padding: 15px; }
-  .option-audio-btn { width: 30px; height: 30px; }
+.next-btn.pulse {
+    animation: pulse 1s infinite;
 }
 </style>
