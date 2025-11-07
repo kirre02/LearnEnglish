@@ -42,21 +42,18 @@ CREATE TABLE IF NOT EXISTS words (
     wrong3 VARCHAR(100) NOT NULL
 );
 
+-- BEHÅLL DIN QUIZ_RESULTS TABELL
 CREATE TABLE quiz_results (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
   correct_answers INT NOT NULL,
   wrong_answers INT NOT NULL,
+  quiz_type VARCHAR(50),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-INSERT INTO quiz_results (user_id, correct_answers, wrong_answers) VALUES
-(1, 14, 6),
-(1, 16, 4),
-(1, 18, 2);
-
-
-ALTER TABLE quiz_results ADD COLUMN quiz_type VARCHAR(50);
-ALTER TABLE quiz_results ADD COLUMN quiz_type VARCHAR(50);
-
+INSERT INTO quiz_results (user_id, correct_answers, wrong_answers, quiz_type) VALUES
+(1, 14, 6, 'quiz'),
+(1, 16, 4, 'quiz'),
+(1, 18, 2, 'quiz');

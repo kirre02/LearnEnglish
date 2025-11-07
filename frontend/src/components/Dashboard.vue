@@ -15,23 +15,14 @@
           <div class="sparkles">✨✨✨</div>
         </div>
         
-        <div class="user-info-bubble">
-          <div class="user-avatar">😊</div>
-          <div class="user-details">
-            <div class="word-count">
-              <span class="count">{{ learnedWords }}</span>
-              <span class="label">ord lärt!</span>
-            </div>
-            <button @click="handleLogout" class="logout-btn">
-              <span class="logout-text">Logga Ut</span>
-              <span class="logout-emoji">👋</span>
-            </button>
-          </div>
-        </div>
+        <UserInfoBubble
+          :learnedWords="learnedWords"
+          @logout="handleLogout"
+          @show-profile="goToProfile" />
+
       </div>
     </div>
 
-    <!-- Framstegs-bubblor -->
     <div class="progress-bubbles three-columns">
       <div class="progress-bubble progress-main">
         <div class="bubble-emoji">🚀</div>
@@ -83,7 +74,6 @@
       </div>
     </div>
 
-    <!-- Quiz Options Modal -->
     <div v-if="showQuizModal" class="modal-overlay" @click="closeQuizModal">
       <div class="quiz-modal" @click.stop>
         <div class="modal-header">
@@ -130,12 +120,12 @@
         <h2>Vad vill du utforska idag? 🗺️</h2>
         <div class="header-decoration">🎨🌟🎯</div>
       </div>
-      
+
       <div class="explore-cards">
-        <div 
-          v-for="(category, index) in categories" 
-          :key="category.id" 
-          :class="['explore-card', 'card-' + (index + 1)]" 
+        <div
+          v-for="(category, index) in categories"
+          :key="category.id"
+          :class="['explore-card', 'card-' + (index + 1)]"
           @click="navigateToCategory(category.name)">
           <div class="card-emoji">{{ category.emoji }}</div>
           <div class="card-wave"></div>
@@ -161,9 +151,10 @@
 
 <script>
 import QuizResultatMini from "@/components/QuizResults.vue"; 
+import UserInfoBubble from './UserInfoBubble.vue'; // LÄGG TILL DENNA
 
 export default {
-  components: { QuizResultatMini },
+  components: { QuizResultatMini, UserInfoBubble }, // REGISTRERAR BÅDA
   name: 'Dashboard',
   data() {
     return {
@@ -295,7 +286,7 @@ export default {
       this.$router.push('/practice/quiz');
     },
 
-    handleLogout() {
+    handleLogout() { // BEHÅLLS för UserInfoBubble-komponenten
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       localStorage.removeItem('learningProgress');
@@ -304,16 +295,20 @@ export default {
       this.$router.push('/');
     },
 
+    goToProfile() { // BEHÅLLS för UserInfoBubble-komponenten
+      this.$router.push('/profile');
+    },
+
     navigateToCategory(categoryName) {
       const routes = {
         'Färger': '/färger',
-        'Djur': '/djur', 
+        'Djur': '/djur',
         'Siffror': '/siffror',
         'Mat': '/mat',
         'Familj': '/familj',
         'Vardagsord': '/vardagsord'
       };
-      
+
       if (routes[categoryName]) {
         this.$router.push(routes[categoryName]);
       } else {
@@ -428,65 +423,6 @@ export default {
 @keyframes sparkle {
   0%, 100% { opacity: 0.7; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.1); }
-}
-
-.user-info-bubble {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 20px;
-  border-radius: 25px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-  backdrop-filter: blur(10px);
-}
-
-.user-avatar {
-  font-size: 3em;
-  text-align: center;
-  margin-bottom: 10px;
-}
-
-.user-details {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.word-count {
-  text-align: center;
-}
-
-.count {
-  display: block;
-  font-size: 1.8em;
-  font-weight: bold;
-  color: #FF6B6B;
-}
-
-.label {
-  font-size: 0.9em;
-  color: #666;
-}
-
-.logout-btn {
-  background: linear-gradient(135deg, #FF6B6B, #FF5252);
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(255,107,107,0.3);
-  font-size: 0.9em;
-}
-
-.logout-btn:hover {
-  transform: scale(1.05);
-  background: linear-gradient(135deg, #FF5252, #FF0000);
-  box-shadow: 0 6px 20px rgba(255,107,107,0.5);
 }
 
 /* NY: Quiz Modal Styles */
@@ -990,11 +926,6 @@ export default {
   
   .floating-balloons {
     display: none;
-  }
-  
-  .user-details {
-    flex-direction: column;
-    gap: 15px;
   }
   
   .quiz-modal {
