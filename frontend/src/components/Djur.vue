@@ -253,16 +253,18 @@ export default {
       console.log('Web Speech API är inte tillgängligt i denna webbläsare');
     }
 
-    this.fetchQuizQuestions();
-    
-    // Fokusera på containern för tangentbordsnavigation
-    this.$nextTick(() => {
-      if (this.$refs.pageContainer) {
-        this.$refs.pageContainer.focus();
-      }
-      this.initializeNavigation();
-    });
-  },
+    this.fetchQuizQuestions().then(() => {
+      // Fokusera på containern för tangentbordsnavigation
+      this.$nextTick(() => {
+        if (this.$refs.pageContainer) {
+          this.$refs.pageContainer.focus();
+        }
+        // Kalla på scroll och navigation först när datan är redo
+        this.scrollToQuestion(); // <-- NYT: Scrolla upp till första frågan
+        this.initializeNavigation();
+      });
+    });
+  },    
   methods: {
     // NYA: Metoder för tangentbordsnavigation och fokus
     initializeNavigation() {
@@ -539,15 +541,35 @@ export default {
       });
     },
     
-    nextQuestion() {
-      if (this.isLastQuestion) {
-        this.finishQuiz();
-      } else {
-        this.currentQuestionIndex++;
-        this.answered = false;
-        this.selectedAnswer = null;
-      }
-    },
+   nextQuestion() {
+            if (this.isLastQuestion) {
+                this.finishQuiz();
+            } else {
+                this.currentQuestionIndex++;
+                this.answered = false;
+                this.selectedAnswer = null;
+
+                // NY LOGIK: Scrolla upp och sätt fokus på första alternativet.
+                this.$nextTick(() => {
+                    this.scrollToQuestion();
+                    // initializeNavigation kommer anropas via 'watch' på currentQuestionIndex,
+                    // men vi kan kalla den direkt för snabbare fokus-sättning.
+                    this.initializeNavigation(); 
+                });
+            }
+        },
+        scrollToQuestion() {
+            // Försök hitta containern för frågan, eller bara scrolla till toppen av Djur-containern.
+            const questionContainer = this.$el.querySelector('.djur-content'); 
+            
+            if (questionContainer) {
+                // Använder 'smooth' för en mjukare övergång
+                questionContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else if (this.$refs.pageContainer) {
+                 // Fallback: Scrolla till toppen av hela quiz-sidan
+                 this.$refs.pageContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        },
     finishQuiz() {
       this.quizFinished = true;
       this.updateProgress();
