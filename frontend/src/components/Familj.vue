@@ -2,7 +2,6 @@
   <div class="familj-page-container">
     <div class="familj-container">
       <div class="familj-header">
-        <!-- FIX: Ändrad tillbaka-knapp -->
         <button @click="goBack" class="back-btn">← Tillbaka</button>
         <div class="quiz-progress">
           <span class="progress-text">Fråga {{ currentQuestionIndex + 1 }} av {{ questions.length }}</span>
@@ -101,16 +100,43 @@ export default {
       return shuffled;
     };
 
-    // Din befintliga frågor array förblir oförändrad
+    // UPPDATERAD: Frågor från databasen för familjekategorin (svenska -> engelska)
     const initialQuestions = [
       {
-        question: "Vad betyder 'mother' på svenska?",
-        options: ["mamma", "pappa", "syster", "bror"],
-        correctAnswer: "mamma",
+        question: "Vad betyder 'mamma' på engelska?",
+        options: ["mother", "father", "sister", "brother"],
+        correctAnswer: "mother",
         hint: "Hon tar hand om barnen",
         audioText: "mother"
       },
-      // ... resten av dina frågor
+      {
+        question: "Vad betyder 'pappa' på engelska?",
+        options: ["father", "mother", "grandfather", "uncle"],
+        correctAnswer: "father",
+        hint: "Han är make till mamma",
+        audioText: "father"
+      },
+      {
+        question: "Vad betyder 'syster' på engelska?",
+        options: ["sister", "brother", "mother", "father"],
+        correctAnswer: "sister",
+        hint: "Hon är en kvinnlig syskon",
+        audioText: "sister"
+      },
+      {
+        question: "Vad betyder 'bror' på engelska?",
+        options: ["brother", "sister", "cousin", "grandfather"],
+        correctAnswer: "brother",
+        hint: "Han är en manlig syskon",
+        audioText: "brother"
+      },
+      {
+        question: "Vad betyder 'familj' på engelska?",
+        options: ["family", "parents", "relatives", "cousins"],
+        correctAnswer: "family",
+        hint: "Mamma, pappa och barn tillsammans",
+        audioText: "family"
+      }
     ];
 
     const preparedQuestions = initialQuestions.map(question => {
@@ -212,8 +238,58 @@ export default {
     if (!this.isSpeechSupported) {
       console.log('Web Speech API är inte tillgängligt i denna webbläsare');
     }
+
+    // Hämta frågor från databasen
+    this.fetchQuizQuestions();
   },
   methods: {
+    // NY METOD: Hämta frågor från databasen
+    async fetchQuizQuestions() {
+      try {
+        const response = await fetch('http://localhost:9001/api/words/category/familj');
+        
+        if (response.ok) {
+          const words = await response.json();
+          
+          if (words.length > 0) {
+            // Ta de första 5 orden från databasen
+            const dbWords = words.slice(0, 5);
+            
+            // Skapa frågor från databasorden
+            const dbQuestions = dbWords.map(word => {
+              // Skapa felaktiga alternativ baserat på andra ord i kategorin
+              const otherWords = words.filter(w => w.id !== word.id);
+              const incorrectOptions = this.shuffleArray(otherWords)
+                .slice(0, 3)
+                .map(w => w.english);
+              
+              const allOptions = this.shuffleArray([
+                word.english,
+                ...incorrectOptions
+              ]);
+
+              return {
+                question: `Vad betyder '${word.swedish}' på engelska?`,
+                options: allOptions,
+                correctAnswer: word.english,
+                hint: word.hint || `Ord från familjekategorin`,
+                audioText: word.english
+              };
+            });
+
+            // Uppdatera frågorna med data från databasen
+            this.questions = this.shuffleArray(dbQuestions);
+            this.initialQuestions = dbQuestions;
+          }
+        } else {
+          console.error('Kunde inte hämta ord från databasen');
+        }
+      } catch (error) {
+        console.error('Fel vid hämtning av ord:', error);
+        // Använd standardfrågorna om databasen inte är tillgänglig
+      }
+    },
+
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
@@ -221,7 +297,6 @@ export default {
     getOptionClass(option) {
       if (!this.answered) return '';
       
-      // FIX: Lägg till 'selected' klass för att markera valt svar
       if (option === this.selectedAnswer) {
         return option === this.currentQuestion.correctAnswer ? 'correct' : 'incorrect';
       }
@@ -233,7 +308,6 @@ export default {
       return '';
     },
     checkAnswer(selectedAnswer) {
-      // FIX: Se till att answered och selectedAnswer sätts korrekt
       this.answered = true;
       this.selectedAnswer = selectedAnswer;
 
@@ -268,7 +342,8 @@ export default {
         const resultData = {
           userId: 1,
           score: this.score,
-          total: this.questions.length
+          total: this.questions.length,
+          category: 'familj'
         };
 
         const response = await fetch('http://localhost:9001/api/results', {
@@ -304,23 +379,16 @@ export default {
       }
     },
     restartQuiz() {
-      const preparedQuestions = this.initialQuestions.map(question => {
-        return {
-          ...question,
-          options: this.shuffleArray([...question.options])
-        };
+      // Använd databasfrågor vid omstart
+      this.fetchQuizQuestions().then(() => {
+        this.score = 0;
+        this.currentQuestionIndex = 0;
+        this.answered = false;
+        this.selectedAnswer = null;
+        this.quizFinished = false;
       });
-
-      this.questions = this.shuffleArray(preparedQuestions);
-      this.score = 0;
-      this.currentQuestionIndex = 0;
-      this.answered = false;
-      this.selectedAnswer = null;
-      this.quizFinished = false;
     },
-    // FIX: Uppdaterad goBack metod
     goBack() {
-      // Försök gå tillbaka, om det inte går, gå till dashboard
       if (window.history.length > 1) {
         this.$router.back();
       } else {
@@ -334,7 +402,7 @@ export default {
       this.$router.push({ path: '/results', query: { showResults: 'true' } });
     },
 
-    // Ljudmetoder förblir oförändrade
+    // Ljudmetoder
     async playOptionAudio(option) {
       this.currentLoadingOption = option;
       await this.playAudio(option);
@@ -531,7 +599,6 @@ export default {
   border-color: #FF9A8B;
 }
 
-/* FIX: Förbättrad CSS för att markera valda svar */
 .option-btn.correct {
   border-color: #4ECDC4;
   background: #4ECDC4;
@@ -766,4 +833,5 @@ export default {
     width: 30px;
     height: 30px;
   }
-}</style>
+}
+</style>
