@@ -2,7 +2,6 @@ import express from "express";import cors from "cors";
 import userRoutes from "./routes/userRoutes.js";
 import wordRoutes from "./routes/wordRoutes.js";
 import resultRoutes from "./routes/resultRoutes.js";
-import resultRoutes from "./routes/resultRoutes.js";  // Från gren 4
 
 const app = express();
 const PORT = 9001;
