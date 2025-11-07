@@ -599,36 +599,43 @@ export default {
       }
     },
 
-    goBack() {
-      if (this.currentQuestionIndex > 0) {
-        this.currentQuestionIndex--;
-        this.answered = false;
-        this.selectedAnswer = null;
-        this.focusedOptionIndex = 0;
-        this.saveCurrentQuizState();
-      } else {
-        this.$router.push('/dashboard');
-      }
-    },
+   goBack() {
+  if (this.currentQuestionIndex > 0) {
+    this.currentQuestionIndex--;
+    this.answered = false;
+    this.selectedAnswer = null;
+    this.focusedOptionIndex = 0;
+    this.saveCurrentQuizState();
     
+    this.$nextTick(() => {
+      // ✅ VIKTIGT: Fokusera tillbaka på containern
+      this.$el.focus();
+      this.scrollToFocusedOption();
+    });
+  } else {
+    this.$router.push('/dashboard');
+  }
+},
     nextQuestion() {
-      if (this.isLastQuestion) {
-        this.finishQuiz();
-      } else {
-        this.currentQuestionIndex++;
-        this.answered = false;
-        this.selectedAnswer = null;
-        this.focusedOptionIndex = 0;
-        this.focusedAction = 'next';
-        this.pulseAudioButton = false;
-        this.saveCurrentQuizState();
+  if (this.isLastQuestion) {
+    this.finishQuiz();
+  } else {
+    this.currentQuestionIndex++;
+    this.answered = false;
+    this.selectedAnswer = null;
+    this.focusedOptionIndex = 0;
+    this.focusedAction = 'next';
+    this.pulseAudioButton = false;
+    this.saveCurrentQuizState();
 
-        this.$nextTick(() => {
-          this.focusedOptionIndex = 0;
-          this.scrollToFocusedOption();
-        });
-      }
-    },
+    this.$nextTick(() => {
+      // ✅ VIKTIGT: Fokusera tillbaka på containern för tangentbordsnavigation
+      this.$el.focus();
+      this.focusedOptionIndex = 0;
+      this.scrollToFocusedOption();
+    });
+  }
+},
     
     finishQuiz() {
       this.quizFinished = true;
@@ -693,31 +700,31 @@ export default {
     },
     
     restartQuiz() {
-      const preparedQuestions = this.initialQuestions.map(question => {
-        return {
-          ...question,
-          options: this.shuffleArray([...question.options])
-        };
-      });
+  const preparedQuestions = this.initialQuestions.map(question => {
+    return {
+      ...question,
+      options: this.shuffleArray([...question.options])
+    };
+  });
 
-      this.questions = this.shuffleArray(preparedQuestions);
-      this.score = 0;
-      this.currentQuestionIndex = 0;
-      this.answered = false;
-      this.selectedAnswer = null;
-      this.quizFinished = false;
-      this.focusedOptionIndex = 0;
-      this.focusedAction = 'next';
-      this.pulseAudioButton = false;
+  this.questions = this.shuffleArray(preparedQuestions);
+  this.score = 0;
+  this.currentQuestionIndex = 0;
+  this.answered = false;
+  this.selectedAnswer = null;
+  this.quizFinished = false;
+  this.focusedOptionIndex = 0;
+  this.focusedAction = 'next';
+  this.pulseAudioButton = false;
 
-      localStorage.removeItem('currentQuizState');
-      localStorage.removeItem('savedQuizState');
+  localStorage.removeItem('currentQuizState');
+  localStorage.removeItem('savedQuizState');
 
-      this.$nextTick(() => {
-        this.$el.focus();
-      });
-    },
-    
+  this.$nextTick(() => {
+    // ✅ VIKTIGT: Fokusera tillbaka på containern
+    this.$el.focus();
+  });
+},    
     goToDashboard() {
       this.$router.push('/dashboard');
     },
