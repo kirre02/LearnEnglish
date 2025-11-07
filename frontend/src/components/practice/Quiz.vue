@@ -179,7 +179,6 @@ export default {
         hint: "En röd eller grön frukt",
         audioText: "Apple"
       },
-      // ... resten av dina frågor
     ];
 
     const preparedQuestions = initialQuestions.map(question => {
@@ -284,7 +283,6 @@ export default {
       } else {
         console.log("🧠 Laddar quizfrågor...");
         
-        // NY: Kolla om vi ska fortsätta sparad quiz
         if (this.$route.query.continue === 'true') {
           this.loadSavedQuiz();
         } else {
@@ -298,7 +296,6 @@ export default {
       this.loading = false;
     }
     
-    // Token check från main
     if (!localStorage.getItem('token')) {
       this.$router.push('/');
     }
@@ -310,32 +307,45 @@ export default {
   },
   
   methods: {
-    // NY METOD: Hämta det svenska ordet (prompten)
     getSwedishWord() {
       if (!this.currentQuestion) return '';
       return this.currentQuestion.swedish || this.currentQuestion.question || '[Ord saknas]';
     },
 
     async loadPastResults() {
-      this.loading = true;
-      try {
-        const userId = 1;
-        const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
-        if (!response.ok) throw new Error('Kunde inte hämta quizresultat');
+  this.loading = true;
+  try {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const userId = user?.id || 1;
+    
+    console.log("🔍 Hämtar resultat för user_id:", userId);
+    
+    const response = await fetch(`http://localhost:9001/api/quiz/quiz-results/${userId}`);
+    
+    if (!response.ok) {
+      console.error("❌ API fel:", response.status);
+      throw new Error('Kunde inte hämta quizresultat');
+    }
 
-        const data = await response.json();
-        this.results = data
-          .filter(r => !r.quiz_type || r.quiz_type.toLowerCase() === 'quiz')
-          .sort((a, b) => new Date(b.date) - new Date(a.date));
+    const data = await response.json();
+    console.log("📊 Data från API:", data);
+    
+    // ✅ Uppdaterat filter - visa alla quiz-typer eller ingen typ
+    this.results = data
+      .filter(r => {
+        const type = r.quiz_type ? r.quiz_type.toLowerCase() : '';
+        return !type || type === 'quiz' || type === 'vocabulary' || type === 'listen';
+      })
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-        console.log("✅ Quiz results loaded:", this.results.length);
-      } catch (err) {
-        console.error("❌ Fel vid hämtning av quizresultat:", err);
-        this.results = [];
-      } finally {
-        this.loading = false;
-      }
-    },
+    console.log("✅ Filtrerade resultat:", this.results.length);
+  } catch (err) {
+    console.error("❌ Fel vid hämtning av quizresultat:", err);
+    this.results = [];
+  } finally {
+    this.loading = false;
+  }
+},
 
     async loadQuestionsFromDatabase() {
       this.loading = true;
@@ -350,29 +360,24 @@ export default {
         }
 
         const randomWords = this.shuffleArray([...allWords]).slice(0, 20);
-        
-        // Hämta alla engelska ord för felaktiga alternativ
         const allEnglishWords = allWords.map(w => w.english);
 
         this.questions = randomWords.map(word => {
-          
-          // Hämta 3 slumpmässiga engelska ord som inte är det rätta svaret
           const wrongEnglishOptions = this.shuffleArray(
             allEnglishWords.filter(engWord => engWord !== word.english)
           ).slice(0, 3);
 
-          // Skapa alternativ (rätt svar i engelska + 3 felaktiga i engelska)
           const options = this.shuffleArray([
-            word.english, // Rätt svar är nu engelska
+            word.english,
             ...wrongEnglishOptions
           ]);
 
           return {
-            swedish: word.swedish, // Svenska ordet är frågan (prompt)
-            correctAnswer: word.english, // Engelska ordet är rätt svar
-            options: options, // Alternativen är engelska
+            swedish: word.swedish,
+            correctAnswer: word.english,
+            options: options,
             hint: `Öva på ordet "${word.swedish}"`,
-            audioText: word.english // Ljudet spelas upp i engelska
+            audioText: word.english
           };
         });
 
@@ -395,23 +400,19 @@ export default {
           hint: "Det är det första man säger när man träffar någon",
           audioText: "Hello"
         },
-        // ... resten av fallback-frågor
       ];
       
       this.questions = this.shuffleArray(fallbackQuestions).slice(0, 20);
       console.log('Använder fallback-frågor');
     },
 
-    // NY: Bekräfta avbrott av quiz
     confirmCancelQuiz() {
       if (confirm('Vill du avbryta quizet? Ditt framsteg kommer att sparas så du kan fortsätta senare.')) {
         this.cancelQuiz();
       }
     },
 
-    // NY: Avbryt quiz och spara progress
     cancelQuiz() {
-      // Spara quiz-state för att kunna fortsätta senare
       const quizState = {
         score: this.score,
         currentQuestionIndex: this.currentQuestionIndex,
@@ -422,13 +423,11 @@ export default {
         timestamp: new Date().getTime()
       };
       localStorage.setItem('savedQuizState', JSON.stringify(quizState));
-      localStorage.removeItem('currentQuizState'); // Rensa temporärt state
+      localStorage.removeItem('currentQuizState');
       
-      // Gå till dashboard
       this.$router.push('/dashboard');
     },
 
-    // NY: Ladda sparad quiz
     loadSavedQuiz() {
       const savedState = localStorage.getItem('savedQuizState');
       if (savedState) {
@@ -442,18 +441,16 @@ export default {
           this.quizFinished = state.quizFinished || false;
           
           console.log('Fortsätter sparad quiz från fråga:', this.currentQuestionIndex + 1);
-          // Rensa savedQuizState så att Fortsätt-knappen tas bort efter laddning
           localStorage.removeItem('savedQuizState');
         } catch (e) {
           console.error('Kunde inte ladda sparad quiz:', e);
-          this.loadCurrentQuizState(); // Fallback
+          this.loadCurrentQuizState();
         }
       } else {
-        this.loadCurrentQuizState(); // Fallback
+        this.loadCurrentQuizState();
       }
     },
 
-    // Quiz metoder
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
@@ -639,7 +636,7 @@ export default {
       this.saveQuizResult();
       this.saveQuizStateForResults();
       localStorage.removeItem('currentQuizState');
-      localStorage.removeItem('savedQuizState'); // Rensa sparad state vid avslut
+      localStorage.removeItem('savedQuizState');
     },
     
     saveQuizStateForResults() {
@@ -816,8 +813,6 @@ export default {
     if (this.isSpeechSupported) {
       speechSynthesis.cancel();
     }
-    // Spara endast 'currentQuizState' om quizet inte är slut och vi INTE har avbrutit det.
-    // 'cancelQuiz' hanterar redan sparning till 'savedQuizState'.
     if (!this.quizFinished && !localStorage.getItem('savedQuizState')) { 
       this.saveCurrentQuizState();
     }
@@ -853,7 +848,6 @@ export default {
   margin-bottom: 30px;
   gap: 15px;
 }
-/* SLUT NY CSS */
 
 /* BEFINTLIG CSS */
 .quiz-page-container {
@@ -1128,7 +1122,6 @@ export default {
   animation: fadeInUp 0.7s ease-out;
 }
 
-/* 🔥 Arka plan tonlarını açtık, pastel ve sıcak */
 .results-bubble.excellent {
   background: linear-gradient(135deg, #6FE7DD, #349D9E);
 }
@@ -1164,7 +1157,6 @@ export default {
   margin-bottom: 30px;
 }
 
-/* === Buttons (uyumlu mercan + mint gradyanlar) === */
 .results-actions {
   display: flex;
   justify-content: center;
@@ -1184,7 +1176,6 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* 🎮 Spela igen → canlı mint (enerjik ton) */
 .play-again-btn {
   background: linear-gradient(135deg, #A8E6CF, #4ECDC4);
   color: white;
@@ -1192,7 +1183,6 @@ export default {
   box-shadow: 0 4px 10px rgba(78, 205, 196, 0.4);
 }
 
-/* 📊 Se alla resultat → yumuşak nane (daha açık, fresh ton) */
 .results-btn {
   background: linear-gradient(135deg, #B9F3E4, #7BE5C9);
   color: white;
@@ -1200,7 +1190,6 @@ export default {
   box-shadow: 0 4px 10px rgba(123, 229, 201, 0.4);
 }
 
-/* 🏠 Till dashboard → deniz yeşili (biraz daha koyu mint ton) */
 .dashboard-btn {
   background: linear-gradient(135deg, #8FDAC5, #44A08D);
   color: white;
@@ -1208,7 +1197,6 @@ export default {
   box-shadow: 0 4px 10px rgba(68, 160, 141, 0.4);
 }
 
-/* ✨ Hover (hepsi için ortak mint parlaması) */
 .action-btn:hover {
   transform: scale(1.08);
   background: linear-gradient(135deg, #A0E7CA, #44A08D);
