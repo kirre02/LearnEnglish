@@ -1,7 +1,7 @@
 <template>
   <div class="färger-page-container">
     <div class="färger-container">
-      <div class="quiz-header">
+      <div class="färger-header">
         <button @click="goBack" class="back-btn">← Tillbaka</button>
         <div class="quiz-progress">
           <span class="progress-text">Fråga {{ currentQuestionIndex + 1 }} av {{ questions.length }}</span>
@@ -100,151 +100,46 @@ export default {
       return shuffled;
     };
 
-    // UTÖKAD LISTA MED 20 FRÅGOR OM FÄRGER
+    // Standardfrågor som fallback om databasen inte är tillgänglig
     const initialQuestions = [
       {
-        question: "Vilken färg är 'röd' på engelska?",
+        question: "Vad betyder 'röd' på engelska?",
         options: ["red", "blue", "green", "yellow"],
         correctAnswer: "red",
         hint: "Det är den färg man ofta kopplar till stoppskyltar",
         audioText: "red"
       },
       {
-        question: "Vilken färg är 'blå' på engelska?",
+        question: "Vad betyder 'blå' på engelska?",
         options: ["blue", "red", "white", "black"],
         correctAnswer: "blue",
         hint: "Färgen på himlen på en solig dag",
         audioText: "blue"
       },
       {
-        question: "Vilken färg är 'grön' på engelska?",
+        question: "Vad betyder 'grön' på engelska?",
         options: ["green", "yellow", "blue", "red"],
         correctAnswer: "green",
         hint: "Färgen på gräset",
         audioText: "green"
       },
       {
-        question: "Vilken färg är 'gul' på engelska?",
+        question: "Vad betyder 'gul' på engelska?",
         options: ["yellow", "red", "blue", "gray"],
         correctAnswer: "yellow",
         hint: "Färgen på solen",
         audioText: "yellow"
       },
       {
-        question: "Vilken färg är 'svart' på engelska?",
+        question: "Vad betyder 'svart' på engelska?",
         options: ["black", "white", "gray", "red"],
         correctAnswer: "black",
         hint: "Motsatsen till vit",
         audioText: "black"
-      },
-      {
-        question: "Vilken färg är 'vit' på engelska?",
-        options: ["white", "black", "gray", "yellow"],
-        correctAnswer: "white",
-        hint: "Färgen på snö",
-        audioText: "white"
-      },
-      {
-        question: "Vilken färg är 'brun' på engelska?",
-        options: ["brown", "gray", "black", "white"],
-        correctAnswer: "brown",
-        hint: "Färgen på choklad",
-        audioText: "brown"
-      },
-      {
-        question: "Vilken färg är 'orange' på engelska?",
-        options: ["orange", "red", "yellow", "pink"],
-        correctAnswer: "orange",
-        hint: "Namngiven efter en frukt",
-        audioText: "orange"
-      },
-      {
-        question: "Vilken färg är 'lila' på engelska?",
-        options: ["purple", "pink", "blue", "green"],
-        correctAnswer: "purple",
-        hint: "En blandning mellan blått och rött",
-        audioText: "purple"
-      },
-      {
-        question: "Vilken färg är 'rosa' på engelska?",
-        options: ["pink", "red", "orange", "white"],
-        correctAnswer: "pink",
-        hint: "En ljus version av röd",
-        audioText: "pink"
-      },
-      {
-        question: "Vilken färg är 'grå' på engelska?",
-        options: ["gray", "white", "brown", "black"],
-        correctAnswer: "gray",
-        hint: "Mellan svart och vit",
-        audioText: "gray"
-      },
-      {
-        question: "Vilken färg är 'guld' på engelska?",
-        options: ["gold", "silver", "bronze", "yellow"],
-        correctAnswer: "gold",
-        hint: "Färgen på en medalj",
-        audioText: "gold"
-      },
-      {
-        question: "Vilken färg är 'silver' på engelska?",
-        options: ["silver", "gray", "white", "gold"],
-        correctAnswer: "silver",
-        hint: "Motsvarande metallfärg",
-        audioText: "silver"
-      },
-      {
-        question: "Vilken färg är 'beige' på engelska?",
-        options: ["beige", "brown", "gray", "white"],
-        correctAnswer: "beige",
-        hint: "En ljus brunaktig färg",
-        audioText: "beige"
-      },
-      {
-        question: "Vilken färg är 'ljusblå' på engelska?",
-        options: ["light blue", "dark blue", "green", "white"],
-        correctAnswer: "light blue",
-        hint: "Som himlen på en klar dag",
-        audioText: "light blue"
-      },
-      {
-        question: "Vilken färg är 'mörkgrön' på engelska?",
-        options: ["dark green", "light green", "blue", "black"],
-        correctAnswer: "dark green",
-        hint: "Som djungeln",
-        audioText: "dark green"
-      },
-      {
-        question: "Vilken färg är 'turkos' på engelska?",
-        options: ["turquoise", "blue", "green", "purple"],
-        correctAnswer: "turquoise",
-        hint: "Som havet i tropikerna",
-        audioText: "turquoise"
-      },
-      {
-        question: "Vilken färg är 'violett' på engelska?",
-        options: ["violet", "pink", "purple", "blue"],
-        correctAnswer: "violet",
-        hint: "Mellan blått och lila",
-        audioText: "violet"
-      },
-      {
-        question: "Vilken färg är 'marinblå' på engelska?",
-        options: ["navy", "light blue", "black", "gray"],
-        correctAnswer: "navy",
-        hint: "Som havets djup",
-        audioText: "navy"
-      },
-      {
-        question: "Vilken färg är 'krämfärgad' på engelska?",
-        options: ["cream", "white", "beige", "yellow"],
-        correctAnswer: "cream",
-        hint: "Som grädde",
-        audioText: "cream"
       }
     ];
 
-        const preparedQuestions = initialQuestions.map(question => {
+    const preparedQuestions = initialQuestions.map(question => {
       return {
         ...question,
         options: shuffleArray([...question.options])
@@ -256,16 +151,18 @@ export default {
       currentQuestionIndex: 0,
       answered: false,
       selectedAnswer: null,
-      quizFinished: false,      progress: {}, // För att lagra laddad progress
+      quizFinished: false,
+      progress: {},
       questions: shuffleArray(preparedQuestions),
       initialQuestions: initialQuestions,
       shuffleArray: shuffleArray,
 
-      // DATA FÖR LJUD
+      // Data för ljud
       audioLoading: false,
       currentLoadingOption: null,
       currentAudio: null,
-      isSpeechSupported: 'speechSynthesis' in window    }
+      isSpeechSupported: 'speechSynthesis' in window
+    }
   },
   computed: {
     currentQuestion() {
@@ -315,22 +212,21 @@ export default {
     },
     isAnswerCorrect() {
       return this.selectedAnswer === this.currentQuestion.correctAnswer;
-    },  },
+    },
+  },
   mounted() {
-    // Kolla om vi ska visa resultat direkt (när man kommer tillbaka från results-sidan)
-  if (this.$route.query.showResults === 'true') {
+    if (this.$route.query.showResults === 'true') {
       const savedState = localStorage.getItem('lastQuizState');
       if (savedState) {
         try {
           const quizState = JSON.parse(savedState);
           this.quizFinished = true;
-        this.score = quizState.score;
+          this.score = quizState.score;
           localStorage.removeItem('lastQuizState');
         } catch (e) {
           console.error("Kunde inte tolka sparad quiz-state:", e);
         }
       }
-      // Ta bort query-parametern så den inte finns kvar vid refresh
       this.$router.replace({ query: {} });
     }
 
@@ -339,24 +235,76 @@ export default {
     }
     this.loadProgress();
     
-    // Logga om ljudstöd saknas
     if (!this.isSpeechSupported) {
       console.log('Web Speech API är inte tillgängligt i denna webbläsare');
     }
 
+    // Hämta frågor från databasen
     this.fetchQuizQuestions();
-
   },
   methods: {
-    
+    // NY METOD: Hämta frågor från databasen
+    async fetchQuizQuestions() {
+      try {
+        const response = await fetch('http://localhost:9001/api/words/category/färger');
+        
+        if (response.ok) {
+          const words = await response.json();
+          
+          if (words.length > 0) {
+            // Ta de första 5 orden från databasen
+            const dbWords = words.slice(0, 5);
+            
+            // Skapa frågor från databasorden
+            const dbQuestions = dbWords.map(word => {
+              // Skapa felaktiga alternativ baserat på andra ord i kategorin
+              const otherWords = words.filter(w => w.id !== word.id);
+              const incorrectOptions = this.shuffleArray(otherWords)
+                .slice(0, 3)
+                .map(w => w.english);
+              
+              const allOptions = this.shuffleArray([
+                word.english,
+                ...incorrectOptions
+              ]);
+
+              return {
+                question: `Vad betyder '${word.swedish}' på engelska?`,
+                options: allOptions,
+                correctAnswer: word.english,
+                hint: word.hint || `Ord från färgkategorin`,
+                audioText: word.english
+              };
+            });
+
+            // Uppdatera frågorna med data från databasen
+            this.questions = this.shuffleArray(dbQuestions);
+            this.initialQuestions = dbQuestions;
+          }
+        } else {
+          console.error('Kunde inte hämta ord från databasen');
+        }
+      } catch (error) {
+        console.error('Fel vid hämtning av ord:', error);
+        // Använd standardfrågorna om databasen inte är tillgänglig
+      }
+    },
+
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
     },
     getOptionClass(option) {
       if (!this.answered) return '';
-      if (option === this.currentQuestion.correctAnswer) return 'correct';
-      if (option === this.selectedAnswer) return 'incorrect';
+      
+      if (option === this.selectedAnswer) {
+        return option === this.currentQuestion.correctAnswer ? 'correct' : 'incorrect';
+      }
+      
+      if (option === this.currentQuestion.correctAnswer && this.answered) {
+        return 'correct';
+      }
+      
       return '';
     },
     checkAnswer(selectedAnswer) {
@@ -380,9 +328,8 @@ export default {
       this.quizFinished = true;
       this.updateProgress();
       this.saveQuizResult();
-      this.saveQuizStateForResults(); // Spara state när quizet är avslutat
+      this.saveQuizStateForResults();
     },
-    // NY METOD: Spara quiz-state för återanvändning (från gren 4)
     saveQuizStateForResults() {
       const quizState = {
         score: this.score,
@@ -393,9 +340,10 @@ export default {
     async saveQuizResult() {
       try {
         const resultData = {
-          userId: 1, // TODO: Hämta från localStorage/auth
+          userId: 1,
           score: this.score,
-          total: this.questions.length
+          total: this.questions.length,
+          category: 'färger'
         };
 
         const response = await fetch('http://localhost:9001/api/results', {
@@ -431,47 +379,40 @@ export default {
       }
     },
     restartQuiz() {
-      const preparedQuestions = this.initialQuestions.map(question => {
-        return {
-          ...question,
-          options: this.shuffleArray([...question.options])
-        };
+      // Använd databasfrågor vid omstart
+      this.fetchQuizQuestions().then(() => {
+        this.score = 0;
+        this.currentQuestionIndex = 0;
+        this.answered = false;
+        this.selectedAnswer = null;
+        this.quizFinished = false;
       });
-
-      this.questions = this.shuffleArray(preparedQuestions);
-      this.score = 0;
-      this.currentQuestionIndex = 0;
-      this.answered = false;
-      this.selectedAnswer = null;
-      this.quizFinished = false;
     },
     goBack() {
-      this.$router.back();
+      if (window.history.length > 1) {
+        this.$router.back();
+      } else {
+        this.$router.push('/dashboard');
+      }
     },
     goToDashboard() {
       this.$router.push('/dashboard');
     },
-
-
-    // Gå till resultat-sida (från gren 4)
     goToAllResults() {
-      // Lägg till query-parameter för att visa resultat vid återkomst
       this.$router.push({ path: '/results', query: { showResults: 'true' } });
     },
 
-    // LJUDMETODER (från gren 5)
+    // Ljudmetoder
     async playOptionAudio(option) {
       this.currentLoadingOption = option;
       await this.playAudio(option);
       this.currentLoadingOption = null;
     },
-
     async playCorrectAnswerAudio() {
       this.currentLoadingOption = 'correct-answer';
       await this.playAudio(this.currentQuestion.correctAnswer);
       this.currentLoadingOption = null;
     },
-
     async playAudio(text) {
       if (!this.isSpeechSupported) {
         console.warn('Web Speech API stöds inte i denna webbläsare');
@@ -512,15 +453,12 @@ export default {
         this.showAudioError();
       }
     },
-
     showBrowserSupportMessage() {
       alert('Ljudstöd är för närvarande inte tillgängligt i din webbläsare. Vi rekommenderar Chrome eller Edge för bästa upplevelse.');
     },
-
     showAudioError() {
       console.warn('Kunde inte spela upp ljudet. Kontrollera din ljudinställningar.');
     },
-
     shouldShowOptionAudio() {
       return this.isSpeechSupported;
     },
@@ -529,27 +467,25 @@ export default {
   beforeUnmount() {
     if (this.isSpeechSupported) {
       speechSynthesis.cancel();
-
     }
   }
 }
-
 </script>
 
 <style scoped>
-
-.quiz-page-container {
+.färger-page-container {
   min-height: 100vh;
   background-color: #f7f3ed;
   padding: 20px;
   font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
 }
 
-.quiz-container {
+.färger-container {
   max-width: 600px;
   margin: 0 auto;
 }
-.quiz-header {
+
+.färger-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -596,7 +532,6 @@ export default {
   transition: width 0.3s ease;
 }
 
-
 .question-bubble {
   background: linear-gradient(135deg, #FF9A8B, #FF6A88);
   color: white;
@@ -636,6 +571,7 @@ export default {
   font-size: 0.9em;
   margin-top: 15px;
 }
+
 .options-container {
   display: grid;
   gap: 15px;
@@ -660,22 +596,26 @@ export default {
 .option-btn:hover:not(:disabled) {
   transform: translateY(-3px);
   box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  border-color: #FF9A8B;
 }
 
 .option-btn.correct {
   border-color: #4ECDC4;
   background: #4ECDC4;
   color: white;
+  transform: scale(1.02);
 }
 
 .option-btn.incorrect {
   border-color: #FF6B6B;
   background: #FF6B6B;
   color: white;
+  transform: scale(1.02);
 }
 
 .option-btn:disabled {
   cursor: not-allowed;
+  opacity: 0.8;
 }
 
 .option-emoji {
@@ -774,6 +714,7 @@ export default {
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
+
 .results-bubble {
   padding: 40px;
   border-radius: 25px;
@@ -839,7 +780,6 @@ export default {
   backdrop-filter: blur(10px);
 }
 
-/* NY CSS FÖR RESULTS-KNAPPEN */
 .results-btn {
   background: rgba(102, 126, 234, 0.8);
   backdrop-filter: blur(10px);
@@ -854,6 +794,7 @@ export default {
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(0,0,0,0.3);
 }
+
 @keyframes slideUp {
   0% { transform: translateY(20px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
@@ -865,8 +806,9 @@ export default {
   70% { transform: scale(0.9); }
   100% { transform: scale(1); opacity: 1; }
 }
+
 @media (max-width: 768px) {
-  .quiz-header {
+  .färger-header {
     flex-direction: column;
     gap: 15px;
   }
@@ -891,5 +833,4 @@ export default {
     width: 30px;
     height: 30px;
   }
-}
-</style>
+}</style>
