@@ -1,5 +1,6 @@
 <template>
-  <div class="mat-page-container">    <div class="mat-container">
+  <div class="mat-page-container">
+    <div class="mat-container">
       <div class="mat-header">
         <button @click="goBack" class="back-btn">← Tillbaka</button>
         <div class="quiz-progress">
@@ -7,17 +8,19 @@
           <div class="progress-bar">
             <div class="progress-fill" :style="progressBarStyle"></div>
           </div>
-        </div>      </div>
+        </div>
+      </div>
 
-    <div v-if="!quizFinished" class="mat-content">
+      <div v-if="!quizFinished" class="mat-content">
         <div class="question-bubble">
           <div class="question-header">
-            <div class="question-emoji">🧠</div>
+            <div class="question-emoji">🍎</div>
           </div>
           <h2>{{ currentQuestion.question }}</h2>
           <div class="question-hint" v-if="currentQuestion.hint">
             💡 {{ currentQuestion.hint }}
-          </div>        </div>
+          </div>
+        </div>
 
         <div class="options-container">
           <button
@@ -39,8 +42,10 @@
               <span v-if="currentLoadingOption === option">⏳</span>
               <span v-else>🔊</span>
             </button>
-          </button>        </div>
-      <div v-if="answered" class="feedback-bubble" :class="feedbackClass">
+          </button>
+        </div>
+
+        <div v-if="answered" class="feedback-bubble" :class="feedbackClass">
           <div class="feedback-emoji">{{ feedbackEmoji }}</div>
           <div class="feedback-text">{{ feedbackText }}</div>
           <button
@@ -95,151 +100,46 @@ export default {
       return shuffled;
     };
 
-    // LISTA MED 20 FRÅGOR OM MAT
+    // UPPDATERAD: Frågor från databasen för mat-kategorin (svenska -> engelska)
     const initialQuestions = [
       {
-        question: "Vad betyder 'apple' på svenska?",
-        options: ["äpple", "banan", "päron", "apelsin"],
-        correctAnswer: "äpple",
+        question: "Vad betyder 'äpple' på engelska?",
+        options: ["apple", "banana", "pear", "orange"],
+        correctAnswer: "apple",
         hint: "En frukt som ofta är röd eller grön",
         audioText: "apple"
       },
       {
-        question: "Vad betyder 'banana' på svenska?",
-        options: ["banan", "äpple", "päron", "plommon"],
-        correctAnswer: "banan",
+        question: "Vad betyder 'banan' på engelska?",
+        options: ["banana", "apple", "pear", "plum"],
+        correctAnswer: "banana",
         hint: "En gul frukt som apor gillar",
         audioText: "banana"
       },
       {
-        question: "Vad betyder 'pear' på svenska?",
-        options: ["päron", "äpple", "banan", "apelsin"],
-        correctAnswer: "päron",
+        question: "Vad betyder 'päron' på engelska?",
+        options: ["pear", "apple", "banana", "orange"],
+        correctAnswer: "pear",
         hint: "En frukt som är grön och formad som en droppe",
         audioText: "pear"
       },
       {
-        question: "Vad betyder 'orange' på svenska?",
-        options: ["apelsin", "citron", "äpple", "päron"],
-        correctAnswer: "apelsin",
+        question: "Vad betyder 'apelsin' på engelska?",
+        options: ["orange", "lemon", "apple", "pear"],
+        correctAnswer: "orange",
         hint: "En frukt och en färg med samma namn",
         audioText: "orange"
       },
       {
-        question: "Vad betyder 'bread' på svenska?",
-        options: ["bröd", "ost", "mjölk", "smör"],
-        correctAnswer: "bröd",
+        question: "Vad betyder 'bröd' på engelska?",
+        options: ["bread", "cheese", "milk", "butter"],
+        correctAnswer: "bread",
         hint: "Du kan rosta det till frukost",
         audioText: "bread"
-      },
-      {
-        question: "Vad betyder 'cheese' på svenska?",
-        options: ["ost", "smör", "bröd", "fisk"],
-        correctAnswer: "ost",
-        hint: "Passar bra på en smörgås",
-        audioText: "cheese"
-      },
-      {
-        question: "Vad betyder 'milk' på svenska?",
-        options: ["mjölk", "vatten", "saft", "vin"],
-        correctAnswer: "mjölk",
-        hint: "Kommer från kor",
-        audioText: "milk"
-      },
-      {
-        question: "Vad betyder 'butter' på svenska?",
-        options: ["smör", "ost", "bröd", "olja"],
-        correctAnswer: "smör",
-        hint: "Du brer det på mackan",
-        audioText: "butter"
-      },
-      {
-        question: "Vad betyder 'egg' på svenska?",
-        options: ["ägg", "bröd", "ost", "kött"],
-        correctAnswer: "ägg",
-        hint: "Kommer ofta från höns",
-        audioText: "egg"
-      },
-      {
-        question: "Vad betyder 'meat' på svenska?",
-        options: ["kött", "fisk", "grönsak", "frukt"],
-        correctAnswer: "kött",
-        hint: "Kommer från djur",
-        audioText: "meat"
-      },
-      {
-        question: "Vad betyder 'fish' på svenska?",
-        options: ["fisk", "kött", "fågel", "bröd"],
-        correctAnswer: "fisk",
-        hint: "Lever i vattnet",
-        audioText: "fish"
-      },
-      {
-        question: "Vad betyder 'chicken' på svenska?",
-        options: ["kyckling", "fisk", "kött", "ägg"],
-        correctAnswer: "kyckling",
-        hint: "En sorts fågel man kan äta",
-        audioText: "chicken"
-      },
-      {
-        question: "Vad betyder 'rice' på svenska?",
-        options: ["ris", "pasta", "bröd", "ost"],
-        correctAnswer: "ris",
-        hint: "Små vita korn som man ofta äter till curry",
-        audioText: "rice"
-      },
-      {
-        question: "Vad betyder 'pasta' på svenska?",
-        options: ["pasta", "ris", "potatis", "bröd"],
-        correctAnswer: "pasta",
-        hint: "Spagetti är en sort av detta",
-        audioText: "pasta"
-      },
-      {
-        question: "Vad betyder 'potato' på svenska?",
-        options: ["potatis", "ris", "pasta", "bröd"],
-        correctAnswer: "potatis",
-        hint: "Ofta till köttbullar och sås",
-        audioText: "potato"
-      },
-      {
-        question: "Vad betyder 'carrot' på svenska?",
-        options: ["morot", "gurka", "tomat", "äpple"],
-        correctAnswer: "morot",
-        hint: "En orange grönsak som kan ätas rå",
-        audioText: "carrot"
-      },
-      {
-        question: "Vad betyder 'tomato' på svenska?",
-        options: ["tomat", "gurka", "morot", "äpple"],
-        correctAnswer: "tomat",
-        hint: "Röd och används ofta i sallad",
-        audioText: "tomato"
-      },
-      {
-        question: "Vad betyder 'cucumber' på svenska?",
-        options: ["gurka", "tomat", "morot", "äpple"],
-        correctAnswer: "gurka",
-        hint: "Grön och lång, ofta i sallader",
-        audioText: "cucumber"
-      },
-      {
-        question: "Vad betyder 'cake' på svenska?",
-        options: ["tårta", "kex", "glass", "smörgås"],
-        correctAnswer: "tårta",
-        hint: "Serveras ofta på födelsedagar",
-        audioText: "cake"
-      },
-      {
-        question: "Vad betyder 'ice cream' på svenska?",
-        options: ["glass", "tårta", "ost", "mjölk"],
-        correctAnswer: "glass",
-        hint: "Kallt och sött, perfekt på sommaren",
-        audioText: "ice cream"
       }
     ];
 
-            const preparedQuestions = initialQuestions.map(question => {
+    const preparedQuestions = initialQuestions.map(question => {
       return {
         ...question,
         options: shuffleArray([...question.options])
@@ -251,16 +151,18 @@ export default {
       currentQuestionIndex: 0,
       answered: false,
       selectedAnswer: null,
-      quizFinished: false,      progress: {}, // För att lagra laddad progress
+      quizFinished: false,
+      progress: {},
       questions: shuffleArray(preparedQuestions),
       initialQuestions: initialQuestions,
       shuffleArray: shuffleArray,
 
-      // DATA FÖR LJUD
+      // Data för ljud
       audioLoading: false,
       currentLoadingOption: null,
       currentAudio: null,
-      isSpeechSupported: 'speechSynthesis' in window    }
+      isSpeechSupported: 'speechSynthesis' in window
+    }
   },
   computed: {
     currentQuestion() {
@@ -304,28 +206,27 @@ export default {
     },
     resultsMessage() {
       const percentage = (this.score / this.questions.length) * 100;
-      if (percentage >= 80) return 'Fantastiskt! Du är en riktig matkännare!';
-      if (percentage >= 60) return 'Bra jobbat! Du kan många matord!';
-      return 'Fortsätt öva, du blir bättre för varje gång!';
+      if (percentage >= 80) return 'Du kan alla matord galant!';
+      if (percentage >= 60) return 'Du kan många matord!';
+      return 'Fortsätt öva på matorden, du lär dig snabbt!';
     },
     isAnswerCorrect() {
       return this.selectedAnswer === this.currentQuestion.correctAnswer;
-    },  },
+    },
+  },
   mounted() {
-    // Kolla om vi ska visa resultat direkt (när man kommer tillbaka från results-sidan)
-  if (this.$route.query.showResults === 'true') {
+    if (this.$route.query.showResults === 'true') {
       const savedState = localStorage.getItem('lastQuizState');
       if (savedState) {
         try {
           const quizState = JSON.parse(savedState);
           this.quizFinished = true;
-        this.score = quizState.score;
+          this.score = quizState.score;
           localStorage.removeItem('lastQuizState');
         } catch (e) {
           console.error("Kunde inte tolka sparad quiz-state:", e);
         }
       }
-      // Ta bort query-parametern så den inte finns kvar vid refresh
       this.$router.replace({ query: {} });
     }
 
@@ -334,24 +235,76 @@ export default {
     }
     this.loadProgress();
     
-    // Logga om ljudstöd saknas
     if (!this.isSpeechSupported) {
       console.log('Web Speech API är inte tillgängligt i denna webbläsare');
     }
 
+    // Hämta frågor från databasen
     this.fetchQuizQuestions();
-
   },
   methods: {
-    
+    // NY METOD: Hämta frågor från databasen
+    async fetchQuizQuestions() {
+      try {
+        const response = await fetch('http://localhost:9001/api/words/category/mat');
+        
+        if (response.ok) {
+          const words = await response.json();
+          
+          if (words.length > 0) {
+            // Ta de första 5 orden från databasen
+            const dbWords = words.slice(0, 5);
+            
+            // Skapa frågor från databasorden (svenska -> engelska)
+            const dbQuestions = dbWords.map(word => {
+              // Skapa felaktiga alternativ baserat på andra ord i kategorin
+              const otherWords = words.filter(w => w.id !== word.id);
+              const incorrectOptions = this.shuffleArray(otherWords)
+                .slice(0, 3)
+                .map(w => w.english);
+              
+              const allOptions = this.shuffleArray([
+                word.english,
+                ...incorrectOptions
+              ]);
+
+              return {
+                question: `Vad betyder '${word.swedish}' på engelska?`,
+                options: allOptions,
+                correctAnswer: word.english,
+                hint: word.hint || `Ord från matkategorin`,
+                audioText: word.english
+              };
+            });
+
+            // Uppdatera frågorna med data från databasen
+            this.questions = this.shuffleArray(dbQuestions);
+            this.initialQuestions = dbQuestions;
+          }
+        } else {
+          console.error('Kunde inte hämta ord från databasen');
+        }
+      } catch (error) {
+        console.error('Fel vid hämtning av ord:', error);
+        // Använd standardfrågorna om databasen inte är tillgänglig
+      }
+    },
+
     getOptionEmoji(index) {
       const emojis = ['🇦', '🇧', '🇨', '🇩'];
       return emojis[index];
     },
     getOptionClass(option) {
       if (!this.answered) return '';
-      if (option === this.currentQuestion.correctAnswer) return 'correct';
-      if (option === this.selectedAnswer) return 'incorrect';
+      
+      if (option === this.selectedAnswer) {
+        return option === this.currentQuestion.correctAnswer ? 'correct' : 'incorrect';
+      }
+      
+      if (option === this.currentQuestion.correctAnswer && this.answered) {
+        return 'correct';
+      }
+      
       return '';
     },
     checkAnswer(selectedAnswer) {
@@ -375,9 +328,8 @@ export default {
       this.quizFinished = true;
       this.updateProgress();
       this.saveQuizResult();
-      this.saveQuizStateForResults(); // Spara state när quizet är avslutat
+      this.saveQuizStateForResults();
     },
-    // NY METOD: Spara quiz-state för återanvändning (från gren 4)
     saveQuizStateForResults() {
       const quizState = {
         score: this.score,
@@ -388,9 +340,10 @@ export default {
     async saveQuizResult() {
       try {
         const resultData = {
-          userId: 1, // TODO: Hämta från localStorage/auth
+          userId: 1,
           score: this.score,
-          total: this.questions.length
+          total: this.questions.length,
+          category: 'mat'
         };
 
         const response = await fetch('http://localhost:9001/api/results', {
@@ -426,47 +379,40 @@ export default {
       }
     },
     restartQuiz() {
-      const preparedQuestions = this.initialQuestions.map(question => {
-        return {
-          ...question,
-          options: this.shuffleArray([...question.options])
-        };
+      // Använd databasfrågor vid omstart
+      this.fetchQuizQuestions().then(() => {
+        this.score = 0;
+        this.currentQuestionIndex = 0;
+        this.answered = false;
+        this.selectedAnswer = null;
+        this.quizFinished = false;
       });
-
-      this.questions = this.shuffleArray(preparedQuestions);
-      this.score = 0;
-      this.currentQuestionIndex = 0;
-      this.answered = false;
-      this.selectedAnswer = null;
-      this.quizFinished = false;
     },
     goBack() {
-      this.$router.back();
+      if (window.history.length > 1) {
+        this.$router.back();
+      } else {
+        this.$router.push('/dashboard');
+      }
     },
     goToDashboard() {
       this.$router.push('/dashboard');
     },
-
-
-    // Gå till resultat-sida (från gren 4)
     goToAllResults() {
-      // Lägg till query-parameter för att visa resultat vid återkomst
       this.$router.push({ path: '/results', query: { showResults: 'true' } });
     },
 
-    // LJUDMETODER (från gren 5)
+    // Ljudmetoder
     async playOptionAudio(option) {
       this.currentLoadingOption = option;
       await this.playAudio(option);
       this.currentLoadingOption = null;
     },
-
     async playCorrectAnswerAudio() {
       this.currentLoadingOption = 'correct-answer';
       await this.playAudio(this.currentQuestion.correctAnswer);
       this.currentLoadingOption = null;
     },
-
     async playAudio(text) {
       if (!this.isSpeechSupported) {
         console.warn('Web Speech API stöds inte i denna webbläsare');
@@ -507,15 +453,12 @@ export default {
         this.showAudioError();
       }
     },
-
     showBrowserSupportMessage() {
       alert('Ljudstöd är för närvarande inte tillgängligt i din webbläsare. Vi rekommenderar Chrome eller Edge för bästa upplevelse.');
     },
-
     showAudioError() {
       console.warn('Kunde inte spela upp ljudet. Kontrollera din ljudinställningar.');
     },
-
     shouldShowOptionAudio() {
       return this.isSpeechSupported;
     },
@@ -524,26 +467,25 @@ export default {
   beforeUnmount() {
     if (this.isSpeechSupported) {
       speechSynthesis.cancel();
-
     }
   }
 }
 </script>
 
 <style scoped>
-
-.quiz-page-container {
+.mat-page-container {
   min-height: 100vh;
   background-color: #f7f3ed;
   padding: 20px;
   font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
 }
 
-.quiz-container {
+.mat-container {
   max-width: 600px;
   margin: 0 auto;
 }
-.quiz-header {
+
+.mat-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -551,7 +493,7 @@ export default {
 }
 
 .back-btn {
-  background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+  background: linear-gradient(135deg, #FF9A8B, #FF6A88);
   color: white;
   border: none;
   padding: 10px 15px;
@@ -589,7 +531,6 @@ export default {
   background: linear-gradient(135deg, #FF9A8B, #FF6A88);
   transition: width 0.3s ease;
 }
-
 
 .question-bubble {
   background: linear-gradient(135deg, #FF9A8B, #FF6A88);
@@ -630,6 +571,7 @@ export default {
   font-size: 0.9em;
   margin-top: 15px;
 }
+
 .options-container {
   display: grid;
   gap: 15px;
@@ -654,22 +596,26 @@ export default {
 .option-btn:hover:not(:disabled) {
   transform: translateY(-3px);
   box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  border-color: #FF9A8B;
 }
 
 .option-btn.correct {
   border-color: #4ECDC4;
   background: #4ECDC4;
   color: white;
+  transform: scale(1.02);
 }
 
 .option-btn.incorrect {
   border-color: #FF6B6B;
   background: #FF6B6B;
   color: white;
+  transform: scale(1.02);
 }
 
 .option-btn:disabled {
   cursor: not-allowed;
+  opacity: 0.8;
 }
 
 .option-emoji {
@@ -768,6 +714,7 @@ export default {
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
+
 .results-bubble {
   padding: 40px;
   border-radius: 25px;
@@ -833,7 +780,6 @@ export default {
   backdrop-filter: blur(10px);
 }
 
-/* NY CSS FÖR RESULTS-KNAPPEN */
 .results-btn {
   background: rgba(102, 126, 234, 0.8);
   backdrop-filter: blur(10px);
@@ -848,6 +794,7 @@ export default {
   transform: scale(1.05);
   box-shadow: 0 5px 15px rgba(0,0,0,0.3);
 }
+
 @keyframes slideUp {
   0% { transform: translateY(20px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
@@ -859,8 +806,9 @@ export default {
   70% { transform: scale(0.9); }
   100% { transform: scale(1); opacity: 1; }
 }
+
 @media (max-width: 768px) {
-  .quiz-header {
+  .mat-header {
     flex-direction: column;
     gap: 15px;
   }
@@ -885,5 +833,4 @@ export default {
     width: 30px;
     height: 30px;
   }
-}
-</style>
+}</style>
